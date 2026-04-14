@@ -45,7 +45,7 @@
 ## 1. Project Identity
 
 - **Project:** `webgl-frontend` — WebGL immersive navigation framework
-- **Location:** `/Users/amrambouskila/IMPORTANT/Projects/webgl-frontend/`
+- **Location:** `webgl-frontend/`
 - **Master Plan:** `docs/WEBGL_FRONTEND_MASTER_PLAN.md`
 - **Design Spec:** `webgl-immersive-integration-prompt.md` (900-line architectural reference)
 - **Phase:** 1 of 3
