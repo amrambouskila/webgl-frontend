@@ -1,0 +1,6 @@
+services:
+  webgl-frontend:
+    build: .
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    restart: unless-stopped
