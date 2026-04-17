@@ -19,7 +19,7 @@
 - **Rooms:** 0 of 3 implemented
 - **Post-processing:** Not yet implemented
 - **Navigation:** Not yet implemented
-- **Tests:** Setup only, no test files yet
+- **Tests:** Setup only, no test files yet (vitest configured with `passWithNoTests: true` until first tests land)
 
 ## What's Next
 

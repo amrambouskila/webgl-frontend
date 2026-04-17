@@ -1,5 +1,9 @@
 # Version History
 
+## v0.1.1 — CI test stage unblock
+
+- vite.config.ts: added `test.passWithNoTests: true` so the CI `test` stage exits 0 during scaffold phase (no test files yet). Flag is a no-op once test files land. Patch bump — config-only fix to unbreak the pipeline.
+
 ## v0.1.0 — Project Scaffold
 
 - Full project directory structure created
