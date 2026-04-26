@@ -1,0 +1,36 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "EDITED_FILE=$(jq -r '.tool_input.file_path // empty') && case \"$EDITED_FILE\" in */shaders/*) echo 'SHADER FILE EDITED: '\"$EDITED_FILE\" && echo '' && echo 'Verify:' && echo '  1. No inline GLSL strings in component files' && echo '  2. Shared noise/fresnel functions imported from includes/' && echo '  3. All uniforms typed in ShaderUniforms.ts' && echo '  4. Uniforms include at minimum: uTime, uMouse, uResolution' ;; */components/three/*) echo 'THREE.JS COMPONENT EDITED: '\"$EDITED_FILE\" && echo '' && echo 'Verify:' && echo '  1. All geometries/materials/textures disposed on unmount' && echo '  2. No Three.js objects stored in Zustand state (use refs)' && echo '  3. No built-in materials (MeshStandard/Phong) \u2014 ShaderMaterial only' && echo '  4. InstancedMesh for >100 identical objects' && echo '  5. Only updates when active or adjacent room' ;; */stores/*) echo 'ZUSTAND STORE EDITED: '\"$EDITED_FILE\" && echo '' && echo 'Verify:' && echo '  1. No Three.js objects in state (geometries, materials, textures, meshes)' && echo '  2. Components subscribe to specific slices, not whole store' ;; *) ;; esac",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '=== SESSION END CHECK ===' && CHANGED=$(git diff --name-only 2>/dev/null) && STAGED=$(git diff --cached --name-only 2>/dev/null) && if [ -n \"$CHANGED\" ] || [ -n \"$STAGED\" ]; then echo 'UNCOMMITTED CHANGES DETECTED:' && echo \"$CHANGED\" && echo \"$STAGED\" && echo '' && DOCS_TOUCHED=false && echo \"$CHANGED $STAGED\" | grep -q 'docs/' && DOCS_TOUCHED=true; if [ \"$DOCS_TOUCHED\" = false ]; then echo 'WARNING: Source files changed but no docs/ files were modified.' && echo 'Consider updating: status.md, versions.md'; fi; else echo 'No uncommitted changes.'; fi",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '{\"systemMessage\":\"SESSION END \u2014 MEMORY REVIEW: Before this session closes, review what was learned and suggest memories the user may want to save. Check ~/.codex/memories/-Users-amrambouskila-IMPORTANT-Projects-webgl-frontend/memory/MEMORY.md first to avoid duplicates. Memory types: user (preferences, knowledge), feedback (corrections, confirmed approaches), project (decisions, context), reference (external systems). Present a short bulleted list of suggested memories and let the user decide. Memory dir: ~/.codex/memories/-Users-amrambouskila-IMPORTANT-Projects-webgl-frontend/memory/\"}'",
+            "timeout": 5000
+          }
+        ]
+      }
+    ]
+  }
+}
