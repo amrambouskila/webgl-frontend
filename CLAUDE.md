@@ -2,6 +2,8 @@
 
 ---
 
+<mandatory_workflow>
+
 > **MANDATORY WORKFLOW: READ THIS ENTIRE FILE BEFORE EVERY CHANGE.** Every time. No skimming, no assuming prior-session context carries over — it does not.
 >
 > **Why:** This project spans multiple sessions and months of development. Skipping the re-read produces decisions that contradict the architecture, duplicate existing patterns, break data contracts, or introduce tech debt that compounds.
@@ -14,7 +16,11 @@
 > 5. Read the source files you plan to modify — understand existing patterns first.
 > 6. Then implement, following the rules and contracts defined here.
 
+</mandatory_workflow>
+
 ---
+
+<critical_context>
 
 ## 0. CRITICAL CONTEXT — THIS IS AN IMMERSIVE WEBGL FRAMEWORK
 
@@ -40,7 +46,11 @@
 
 **Phase 1: Core Framework + 3 Rooms.** Build the rendering pipeline, camera system, scroll navigation, post-processing, and three distinct rooms with unique shader aesthetics.
 
+</critical_context>
+
 ---
+
+<project_identity>
 
 ## 1. Project Identity
 
@@ -82,7 +92,11 @@
 - Draco/KTX2 asset compression
 - Void Sphere room (Phase 2 — 4th room)
 
+</project_identity>
+
 ---
+
+<architecture>
 
 ## 2. Architecture & Code Rules
 
@@ -214,7 +228,11 @@ This is frame-rate-independent damping. A flat lerp factor breaks at 30fps vs 14
 - **Shaders:** `camelCase.vert`, `camelCase.frag` (`nebula.vert`, `nebula.frag`)
 - **Shader includes:** `camelCase.glsl` (`noise.glsl`, `fresnel.glsl`)
 
+</architecture>
+
 ---
+
+<performance_rules>
 
 ## 3. Performance Rules
 
@@ -238,7 +256,11 @@ This is frame-rate-independent damping. A flat lerp factor breaks at 30fps vs 14
 6. **Freeze distant room uniforms** — don't update `uTime`/`uMouse` on rooms 2+ away.
 7. **Dispose on room transitions** — dispose geometries/materials when a room is far away.
 
+</performance_rules>
+
 ---
+
+<file_structure>
 
 ## 4. Directory Structure
 
@@ -314,7 +336,11 @@ webgl-frontend/
 └── run_webgl_frontend.bat
 ```
 
+</file_structure>
+
 ---
+
+<testing>
 
 ## 5. Testing Requirements
 
@@ -329,7 +355,11 @@ webgl-frontend/
 - **What NOT to mock:** WebGL context, shader compilation, Three.js math. Test against real computations.
 - **Numerical comparisons:** Use `expect(value).toBeCloseTo(expected, precision)` — never exact equality for floats.
 
+</testing>
+
 ---
+
+<containerization>
 
 ## 6. Containerization
 
@@ -346,7 +376,11 @@ webgl-frontend/
 FRONTEND_PORT=5173
 ```
 
+</containerization>
+
 ---
+
+<ci_cd>
 
 ## 7. CI/CD — GitLab
 
@@ -358,7 +392,11 @@ FRONTEND_PORT=5173
 
 All MRs must pass CI before merging. Conventional commits for semver bumps.
 
+</ci_cd>
+
 ---
+
+<commands>
 
 ## 8. Local Commands
 
@@ -378,7 +416,11 @@ pnpm build            # Production build
 run_webgl_frontend.bat         # Windows
 ```
 
+</commands>
+
 ---
+
+<change_policy>
 
 ## 9. Change Policy
 
@@ -387,7 +429,11 @@ run_webgl_frontend.bat         # Windows
 3. **Version numbers:** Come from `package.json`. Compute next version per semver (see global CLAUDE.md section 6). Do NOT modify `package.json` version directly.
 4. **One unreleased version at a time** in `docs/versions.md`.
 
+</change_policy>
+
 ---
+
+<definition_of_done>
 
 ## 10. Phase 1 Completion Gate
 
@@ -410,7 +456,11 @@ Phase 1 is done when:
 - [ ] Tests cover store logic, hook logic, and utility functions
 - [ ] `docs/status.md` and `docs/versions.md` current
 
+</definition_of_done>
+
 ---
+
+<phase_transition>
 
 ## 11. Phase Transition Strategy
 
@@ -433,13 +483,21 @@ Phase 1 is done when:
 - Draco mesh compression, KTX2 texture compression
 - Lazy-load rooms not adjacent to current
 
+</phase_transition>
+
 ---
+
+<git_policy>
 
 ## 12. Git — Hands Off
 
 User manages all git operations. Read-only git commands (`git status`, `git diff`, `git log`) are fine for inspection. No `git add`, `git commit`, `git push`, or any state-mutating git command.
 
+</git_policy>
+
 ---
+
+<self_audit>
 
 ## 13. Output & Completion Expectations
 
@@ -456,8 +514,14 @@ When completing a task:
 10. **Forward-Compatibility Check** — Room architecture supports Phase 2 content integration.
 11. **Git State** — Report changed files, suggest commit message (do not commit).
 
+</self_audit>
+
 ---
+
+<closing_reminder>
 
 ## 14. Reminder: Read Before You Write
 
 **Every session, every task — re-read this entire file first.** Then `docs/status.md` + `docs/versions.md`. Then source files you plan to touch. Only then implement. The design spec (`webgl-immersive-integration-prompt.md`) is the authoritative reference for shader techniques, room implementations, and architectural patterns.
+
+</closing_reminder>

@@ -117,7 +117,7 @@ graph LR
 
 ```bash
 pnpm install
-pnpm dev        # http://localhost:5173
+pnpm dev        # http://localhost:5240
 ```
 
 ### With Docker

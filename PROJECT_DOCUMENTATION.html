@@ -1,0 +1,1168 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>webgl-frontend — Project Documentation</title>
+  <link rel="stylesheet" href="../.doc-assets/doc.css">
+</head>
+<body>
+  <div id="scrollProgress"></div>
+
+  <header class="doc-header">
+    <div class="brand">
+      <span class="kicker">Project Guide</span>
+      <span class="title">webgl-frontend</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="doc-search">
+      <input id="docSearch" type="search" placeholder="Search this guide…" aria-label="Search documentation">
+      <span class="search-count"></span>
+    </div>
+    <div class="btn-group">
+      <button class="btn" id="expandAll" title="Expand all sections"><span class="ico" style="-webkit-mask:var(--icon-expand) center/contain no-repeat;mask:var(--icon-expand) center/contain no-repeat"></span><span class="label">Expand</span></button>
+      <button class="btn" id="collapseAll" title="Collapse all sections"><span class="ico" style="-webkit-mask:var(--icon-collapse) center/contain no-repeat;mask:var(--icon-collapse) center/contain no-repeat"></span><span class="label">Collapse</span></button>
+      <button class="btn" id="themeToggle" title="Toggle light / dark"><span class="ico"></span></button>
+      <button class="btn" id="printBtn" title="Print / Save as PDF"><span class="ico" style="-webkit-mask:var(--icon-print) center/contain no-repeat;mask:var(--icon-print) center/contain no-repeat"></span></button>
+    </div>
+  </header>
+
+  <div class="doc-layout">
+    <nav class="doc-toc" id="docToc"><div class="toc-title">Contents</div></nav>
+
+    <main class="doc-content">
+      <div class="doc-content-inner">
+
+        <section class="doc-hero">
+          <h1>webgl-frontend</h1>
+          <p class="lede">An immersive WebGL navigation framework — the whole site lives <em>inside</em> a full-viewport 3D world, where the camera lerps between "rooms" (custom-shader 3D scenes) driven by scroll, keyboard, and click. Inspired by Active Theory.</p>
+          <div class="badge-row">
+            <span class="badge accent">Frontend · WebGL</span>
+            <span class="badge amber">Phase 1 · scaffold only</span>
+            <span class="badge purple">React 18 · R3F · TS strict</span>
+            <span class="badge">v0.2.0</span>
+          </div>
+          <div class="meta-grid">
+            <div class="meta-item"><div class="meta-k">Stack</div><div class="meta-v">React 18 · Three.js · TypeScript strict</div></div>
+            <div class="meta-item"><div class="meta-k">Build</div><div class="meta-v">Vite 6 · vite-plugin-glsl · pnpm</div></div>
+            <div class="meta-item"><div class="meta-k">Entry point</div><div class="meta-v">src/main.tsx → src/App.tsx</div></div>
+            <div class="meta-item"><div class="meta-k">Dev URL</div><div class="meta-v">http://localhost:5240</div></div>
+            <div class="meta-item"><div class="meta-k">Status</div><div class="meta-v">Infra complete · 0 of 3 rooms built</div></div>
+            <div class="meta-item"><div class="meta-k">Phase</div><div class="meta-v">1 of 3 (Core Framework)</div></div>
+          </div>
+        </section>
+
+        <!-- ===================== 1. OVERVIEW ===================== -->
+        <section class="doc-section" id="overview">
+          <details open>
+            <summary><span class="sec-num">1</span><h2>Overview — what this is &amp; why</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">A reusable React + Three.js framework for building sites where the webpage <em>is</em> a WebGL world, not a webpage with a 3D widget bolted on.</p>
+
+              <p>Standard websites are flat. Active Theory (activetheory.net) proved that WebGL-powered navigation produces memorable, immersive experiences — but their approach uses a proprietary engine (Hydra) that isn't reusable. <strong>webgl-frontend rebuilds that same quality of experience on an open, extensible stack:</strong> Three.js via React Three Fiber, custom GLSL shaders on every surface, a scroll-driven camera that lerps between 3D "rooms," and a mandatory post-processing pass (bloom, chromatic aberration, vignette).</p>
+
+              <p>The central architectural idea is a clean split between two layers that share one coordinate system: a full-viewport <code>&lt;canvas&gt;</code> at <code>z-index: 0</code> renders the 3D world, and a DOM overlay at <code>z-index: 10+</code> floats navigation, labels, and HUD above it. A small set of <strong>Zustand</strong> stores is the single bridge between the two — they share <code>currentScene</code>, <code>scrollProgress</code>, <code>mouse</code>, and <code>time</code>, and both layers subscribe to slices of that state.</p>
+
+              <div class="callout key">
+                <div class="callout-title">Key concept — "the webpage lives inside a WebGL world"</div>
+                <div class="callout-body">Every visible surface is a hand-written <code>ShaderMaterial</code>. Built-in materials (<code>MeshStandardMaterial</code>, <code>MeshPhongMaterial</code>, etc.) are <strong>banned</strong> — they produce the generic "looks like Three.js" appearance. The Active Theory aesthetic only exists when you control every pixel via custom GLSL. This is the single most important rule of the project.</div>
+              </div>
+
+              <div class="callout warn">
+                <div class="callout-title">Watch out — this is a scaffold, not a running app yet</div>
+                <div class="callout-body">As of <code>v0.2.0</code>, the <strong>infrastructure is complete</strong> (Docker, CI, config, docs, agent tooling) but the <strong>3D code is not implemented</strong>. <code class="fileref dir" data-path="src/">src/</code> currently contains only the Canvas shell (<code class="fileref" data-path="src/App.tsx">App.tsx</code>), the entry point (<code class="fileref" data-path="src/main.tsx">main.tsx</code>), and three type stub files. <strong>No rooms, shaders, hooks, stores, navigation, or post-processing exist yet.</strong> Everything in <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code>'s directory tree under <code>components/</code>, <code>hooks/</code>, <code>stores/</code>, and <code>shaders/</code> is <em>planned</em>, not built. This document distinguishes built vs. planned at every step.</div>
+              </div>
+
+              <p>This is one of Amram's personal projects, treated with production rigor. It is phased across three milestones (core framework → content integration → performance/mobile), currently at the very start of Phase 1. The authoritative references are <code class="fileref" data-path="docs/WEBGL_FRONTEND_MASTER_PLAN.md">docs/WEBGL_FRONTEND_MASTER_PLAN.md</code> (the master plan) and <code class="fileref" data-path="webgl-immersive-integration-prompt.md">webgl-immersive-integration-prompt.md</code> (an 832-line design spec with full shader techniques and reference room implementations).</p>
+
+              <div class="flow"><span class="node">Scroll / Key / Click</span><span class="arrow">→</span><span class="node">Nav store</span><span class="arrow">→</span><span class="node">Camera lerp</span><span class="arrow">→</span><span class="node">Active room</span><span class="arrow">→</span><span class="node">Post-FX</span><span class="arrow">→</span><span class="node">Screen</span></div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 2. STATUS ===================== -->
+        <section class="doc-section" id="status">
+          <details>
+            <summary><span class="sec-num">2</span><h2>Status &amp; at-a-glance</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Where the project actually stands today, drawn from <code class="fileref" data-path="docs/status.md">docs/status.md</code> and verified against the source tree.</p>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Area</th><th>State</th><th>Notes</th></tr></thead>
+                <tbody>
+                  <tr><td>Infrastructure (Docker, CI, config)</td><td><strong>Complete</strong></td><td>Dockerfile, compose, nginx, GitHub Actions CI, Vite/TS/ESLint config all present.</td></tr>
+                  <tr><td>Documentation &amp; agent tooling</td><td><strong>Complete</strong></td><td>CLAUDE.md, AGENTS.md, master plan, design spec, <code>.codex/</code> + <code>.agents/</code> + <code>scripts/hooks/</code>.</td></tr>
+                  <tr><td>App shell (Canvas + overlay div)</td><td><strong>Built</strong></td><td><code class="fileref" data-path="src/App.tsx">src/App.tsx</code> renders an empty R3F Canvas + an empty DOM overlay layer.</td></tr>
+                  <tr><td>Type stubs</td><td><strong>Built</strong></td><td><code>glsl.d.ts</code>, <code>RoomConfig.ts</code>, <code>ShaderUniforms.ts</code>.</td></tr>
+                  <tr><td>Zustand stores (navigation, input)</td><td>Not built</td><td>No <code>src/stores/</code> directory exists yet.</td></tr>
+                  <tr><td>Experience / CameraRig / PostProcessing</td><td>Not built</td><td>No <code>src/components/three/</code> directory exists yet.</td></tr>
+                  <tr><td>Rooms (Nebula, Grid, Crystal)</td><td>0 of 3</td><td>No room components or shaders exist yet.</td></tr>
+                  <tr><td>Shaders (.vert/.frag/.glsl)</td><td>Not built</td><td>No <code>src/shaders/</code> directory exists yet.</td></tr>
+                  <tr><td>Navigation hooks &amp; dots UI</td><td>Not built</td><td>No <code>src/hooks/</code> or <code>src/components/ui/</code> yet.</td></tr>
+                  <tr><td>Tests</td><td>Setup only</td><td><code class="fileref" data-path="tests/setup.ts">tests/setup.ts</code> exists; no <code>*.test.ts</code> files yet. CI passes via <code>passWithNoTests</code>.</td></tr>
+                </tbody>
+              </table></div>
+
+              <div class="callout note">
+                <div class="callout-title">Version note — a small drift to be aware of</div>
+                <div class="callout-body"><code class="fileref" data-path="package.json">package.json</code> declares <code>"version": "0.2.0"</code>, but <code class="fileref" data-path="docs/versions.md">docs/versions.md</code> only documents up to <code>v0.1.1</code>. The <code>v0.2.0</code> entry has not yet been written into the changelog. Per Amram's versioning protocol, <code>package.json</code> is the source of truth for the current version, so the project is on <strong>0.2.0</strong>; the changelog is one entry behind.</div>
+              </div>
+
+              <div class="callout note">
+                <div class="callout-title">Doc-vs-reality drifts captured in this guide</div>
+                <div class="callout-body">A few statements in <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> describe the <em>intended</em> shape rather than what's on disk. This guide flags them where relevant: (1) CI is <strong>GitHub Actions</strong>, not GitLab; (2) agent wiring lives in <code class="fileref dir" data-path=".codex/">.codex/</code> + <code class="fileref dir" data-path=".agents/">.agents/</code> + <code class="fileref dir" data-path="scripts/hooks/">scripts/hooks/</code>, not a <code>.claude/</code> directory; (3) the dev server runs on port <strong>5240</strong>, not 5173.</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 3. TECH STACK ===================== -->
+        <section class="doc-section" id="tech-stack">
+          <details>
+            <summary><span class="sec-num">3</span><h2>Tech stack</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Every dependency below is declared in <code class="fileref" data-path="package.json">package.json</code> and locked in <code class="fileref" data-path="pnpm-lock.yaml">pnpm-lock.yaml</code>. Versions shown are the semver ranges from the manifest.</p>
+
+              <div class="stack-grid">
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">React</span><span class="stack-ver">^18.3.1</span></div>
+                  <div class="stack-why">Component model and lifecycle. <code>StrictMode</code> double-invokes effects to surface cleanup bugs — important for Three.js disposal.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="package.json">package.json</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">three</span><span class="stack-ver">^0.170.0</span></div>
+                  <div class="stack-why">The WebGL2 engine. Accessed declaratively through R3F — never via raw <code>new THREE.WebGLRenderer()</code> per the architecture rules.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="package.json">package.json</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">@react-three/fiber</span><span class="stack-ver">^8.17.0</span></div>
+                  <div class="stack-why">React renderer for Three.js. Its <code>&lt;Canvas&gt;</code> owns the renderer, scene, and render loop; <code>useFrame</code> drives per-frame uniform/camera updates.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="src/App.tsx">src/App.tsx</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">@react-three/drei</span><span class="stack-ver">^9.114.0</span></div>
+                  <div class="stack-why">R3F helper library (cameras, controls, loaders). Pulled in for convenience helpers when rooms are built.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="package.json">package.json</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">@react-three/postprocessing</span><span class="stack-ver">^2.16.0</span></div>
+                  <div class="stack-why">R3F-native <code>EffectComposer</code>. The planned bloom + chromatic aberration + vignette pipeline lives here.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="package.json">package.json</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">zustand</span><span class="stack-ver">^5.0.0</span></div>
+                  <div class="stack-why">Cross-layer shared state. Works outside React's tree, so the WebGL loop can read it without triggering re-renders.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="package.json">package.json</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">gsap</span><span class="stack-ver">^3.12.5</span></div>
+                  <div class="stack-why">Timeline animation + ScrollTrigger. Declared now; active integration is a Phase 2 concern.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="package.json">package.json</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">lenis</span><span class="stack-ver">^1.1.0</span></div>
+                  <div class="stack-why">Smooth, momentum-based scroll normalization across platforms. Feeds normalized scroll into navigation.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="package.json">package.json</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">Vite</span><span class="stack-ver">^6.0.0</span></div>
+                  <div class="stack-why">Dev server + build. Fast HMR, native ESM. Configured with the React plugin and the GLSL plugin.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">vite-plugin-glsl</span><span class="stack-ver">^1.3.0</span></div>
+                  <div class="stack-why">Enables <code>import vert from './nebula.vert'</code> — keeps shaders in separate files, never inline strings.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">TypeScript</span><span class="stack-ver">~5.6.0</span></div>
+                  <div class="stack-why">Strict mode, <code>noUncheckedIndexedAccess</code>, no <code>any</code> (lint-enforced). Build = <code>tsc -b &amp;&amp; vite build</code>.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="tsconfig.json">tsconfig.json</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">Vitest</span><span class="stack-ver">^2.1.0</span></div>
+                  <div class="stack-why">Vite-native test runner with jsdom + React Testing Library + v8 coverage.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">ESLint</span><span class="stack-ver">^9.15.0</span></div>
+                  <div class="stack-why">Flat config with typescript-eslint, react-hooks, react-refresh. <code>no-explicit-any: error</code>, <code>no-var: error</code>.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="eslint.config.js">eslint.config.js</code></div>
+                </div>
+                <div class="stack-card">
+                  <div class="stack-head"><span class="stack-name">pnpm</span><span class="stack-ver">lockfile</span></div>
+                  <div class="stack-why">Package manager. Enabled via corepack in CI and the Docker build.</div>
+                  <div class="stack-foot"><code class="fileref" data-path="pnpm-lock.yaml">pnpm-lock.yaml</code></div>
+                </div>
+              </div>
+
+              <div class="callout note">
+                <div class="callout-title">Where the bundle weight lives</div>
+                <div class="callout-body"><code>three</code> and the R3F ecosystem dominate the bundle. The performance target is <strong>&lt; 300KB gzipped excluding Three.js</strong> (see <a href="#performance">Performance targets</a>). Tree-shaking the Three.js import surface is deferred to Phase 3.</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 4. ARCHITECTURE ===================== -->
+        <section class="doc-section" id="architecture">
+          <details>
+            <summary><span class="sec-num">4</span><h2>Architecture</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Two layers, one coordinate system, one shared store. The canvas renders the 3D world; the DOM renders UI; Zustand is the only bridge between them.</p>
+
+              <h3 class="anchor">Layer model</h3>
+              <p>The whole site is a single full-viewport <code>&lt;canvas&gt;</code>, fixed-position, at <code>z-index: 0</code>. HTML UI (navigation dots, labels, HUD) floats above it at <code>z-index: 10+</code>, with <code>pointer-events: none</code> on the overlay container and <code>pointer-events: auto</code> only on actually-interactive elements. This layering is already encoded in <code class="fileref" data-path="src/App.tsx">src/App.tsx</code>, even though the contents of each layer are empty.</p>
+
+              <figure class="diagram">
+                <div class="mermaid">
+graph TD
+    subgraph DOM["DOM overlay z-10"]
+        Nav[Navigation dots]
+        Labels[Scene labels P2]
+    end
+    subgraph Canvas["WebGL canvas z-0"]
+        R3F[R3F Canvas]
+        Cam[Camera rig]
+        Post[Post-processing]
+        subgraph Rooms
+            R0[Nebula field]
+            R1[Grid horizon]
+            R2[Crystal lattice]
+        end
+    end
+    subgraph State["Zustand stores"]
+        NavStore[navigationStore]
+        InputStore[inputStore]
+    end
+    Nav --> NavStore
+    Cam --> NavStore
+    Cam --> InputStore
+    Rooms --> InputStore
+    Post --> R3F
+    R3F --> Cam
+    R3F --> Rooms
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>graph TD
+    subgraph DOM["DOM overlay z-10"]
+        Nav[Navigation dots]
+        Labels[Scene labels P2]
+    end
+    subgraph Canvas["WebGL canvas z-0"]
+        R3F[R3F Canvas]
+        Cam[Camera rig]
+        Post[Post-processing]
+        subgraph Rooms
+            R0[Nebula field]
+            R1[Grid horizon]
+            R2[Crystal lattice]
+        end
+    end
+    subgraph State["Zustand stores"]
+        NavStore[navigationStore]
+        InputStore[inputStore]
+    end
+    Nav --&gt; NavStore
+    Cam --&gt; NavStore
+    Cam --&gt; InputStore
+    Rooms --&gt; InputStore
+    Post --&gt; R3F
+    R3F --&gt; Cam
+    R3F --&gt; Rooms</code></pre></figure></div>
+                <figcaption>Planned high-level topology. Only the Canvas + DOM overlay scaffolding exists today; rooms, camera, post-FX, and stores are not yet implemented.</figcaption>
+              </figure>
+
+              <h3 class="anchor">Rooms in world space</h3>
+              <p>Rooms are <code>&lt;group&gt;</code> nodes placed at fixed intervals along the Y axis. The camera target for room <em>N</em> is <code>y = -ROOM_SPACING * N</code>, with <code>ROOM_SPACING = 30</code> units (large enough to prevent visual bleed between adjacent rooms). A room receives an <code>active</code> boolean and only updates its shader uniforms when active or adjacent — distant rooms freeze.</p>
+
+              <figure class="code">
+                <figcaption>world-space layout · concept</figcaption>
+                <pre><code>Room 0: group.position.y =   0
+Room 1: group.position.y = -30   (-ROOM_SPACING)
+Room 2: group.position.y = -60   (-ROOM_SPACING * 2)
+
+Camera target for room N: y = -ROOM_SPACING * N</code></pre>
+              </figure>
+
+              <h3 class="anchor">The render loop</h3>
+              <p>One R3F render loop drives everything — there is no separate loop for UI vs GL. Each frame: update inputs → lerp mouse toward target → lerp camera toward the active room → update active/adjacent room uniforms → render scene to a texture → bloom → chromatic aberration → vignette → output to screen.</p>
+
+              <figure class="diagram">
+                <div class="mermaid">
+graph LR
+    A[rAF tick] --> B[Update inputs]
+    B --> C[Lerp mouse]
+    C --> D[Lerp camera]
+    D --> E[Update active room uniforms]
+    E --> F[Render to texture]
+    F --> G[Bloom]
+    G --> H[Chromatic aberration]
+    H --> I[Vignette]
+    I --> J[Screen]
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>graph LR
+    A[rAF tick] --&gt; B[Update inputs]
+    B --&gt; C[Lerp mouse]
+    C --&gt; D[Lerp camera]
+    D --&gt; E[Update active room uniforms]
+    E --&gt; F[Render to texture]
+    F --&gt; G[Bloom]
+    G --&gt; H[Chromatic aberration]
+    H --&gt; I[Vignette]
+    I --&gt; J[Screen]</code></pre></figure></div>
+                <figcaption>Planned per-frame pipeline (design spec §4.1). In R3F this is expressed as <code>useFrame</code> callbacks plus an <code>&lt;EffectComposer&gt;</code>.</figcaption>
+              </figure>
+
+              <h3 class="anchor">Navigation sequence</h3>
+              <figure class="diagram">
+                <div class="mermaid">
+sequenceDiagram
+    participant User
+    participant Hook as useScrollNavigation
+    participant Nav as navigationStore
+    participant Cam as CameraRig
+    participant Old as Room N
+    participant New as Room N1
+    User->>Hook: Scroll / Arrow / Click dot
+    Hook->>Nav: goToScene(N1)
+    Nav->>Nav: transitioning = true
+    Nav-->>Old: active = false
+    Nav-->>New: active = true
+    Nav-->>Cam: targetScene = N1
+    Cam->>Cam: Exponential lerp to room N1
+    Cam-->>Nav: transitioning = false
+    Nav-->>User: Nav dots update
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>sequenceDiagram
+    participant User
+    participant Hook as useScrollNavigation
+    participant Nav as navigationStore
+    participant Cam as CameraRig
+    participant Old as Room N
+    participant New as Room N1
+    User-&gt;&gt;Hook: Scroll / Arrow / Click dot
+    Hook-&gt;&gt;Nav: goToScene(N1)
+    Nav-&gt;&gt;Nav: transitioning = true
+    Nav--&gt;&gt;Old: active = false
+    Nav--&gt;&gt;New: active = true
+    Nav--&gt;&gt;Cam: targetScene = N1
+    Cam-&gt;&gt;Cam: Exponential lerp to room N1
+    Cam--&gt;&gt;Nav: transitioning = false
+    Nav--&gt;&gt;User: Nav dots update</code></pre></figure></div>
+                <figcaption>Planned room-to-room navigation flow (master plan §2). All participants except the store-driven Canvas shell are unbuilt.</figcaption>
+              </figure>
+
+              <div class="callout key">
+                <div class="callout-title">Key concept — frame-rate-independent camera damping</div>
+                <div class="callout-body">The camera never snaps. It sets a <em>target</em> and closes the gap each frame with an exponential lerp: <code>lerpFactor = 1 - Math.pow(0.04, delta)</code>. A flat lerp factor (e.g. <code>0.05</code>) looks different at 30fps vs 144fps; the exponential form gives identical visual motion at any frame rate. <strong>Never set <code>camera.position</code> directly</strong> — always set a target and let the lerp run.</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 5. DIRECTORY STRUCTURE ===================== -->
+        <section class="doc-section" id="structure">
+          <details>
+            <summary><span class="sec-num">5</span><h2>Directory structure</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Annotated map of what actually exists on disk. Planned-but-absent directories are called out explicitly so you don't go looking for files that aren't there yet.</p>
+
+              <h3 class="anchor">Root</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code><span class="filecard-desc">AI/dev guidelines: architecture rules, phase constraints, performance targets, disposal protocol. The mandatory pre-change read.</span></div>
+                <div class="filecard"><code class="fileref" data-path="AGENTS.md">AGENTS.md</code><span class="filecard-desc">Codex twin of CLAUDE.md — same content, for the Codex agent. Kept in sync.</span></div>
+                <div class="filecard"><code class="fileref" data-path="README.md">README.md</code><span class="filecard-desc">Human-facing overview with Mermaid architecture/navigation diagrams and the room descriptions.</span></div>
+                <div class="filecard"><code class="fileref" data-path="webgl-immersive-integration-prompt.md">webgl-immersive-integration-prompt.md</code><span class="filecard-desc">832-line design spec — the authoritative reference for shader techniques, camera math, post-FX, and four reference rooms (incl. the Phase-2 Void Sphere).</span></div>
+                <div class="filecard"><code class="fileref" data-path="index.html">index.html</code><span class="filecard-desc">Vite entry HTML. Full-viewport <code>#root</code>, black background, <code>overflow: hidden</code>, loads <code>/src/main.tsx</code>.</span></div>
+                <div class="filecard"><code class="fileref" data-path="package.json">package.json</code><span class="filecard-desc">Dependencies + scripts. Source of truth for the current version (0.2.0).</span></div>
+                <div class="filecard"><code class="fileref" data-path="vite.config.ts">vite.config.ts</code><span class="filecard-desc">Vite + React + GLSL plugins, dev port 5240, <code>@/</code> alias, Vitest config.</span></div>
+                <div class="filecard"><code class="fileref" data-path="tsconfig.json">tsconfig.json</code><span class="filecard-desc">TypeScript strict config with bundler resolution and extra strictness flags.</span></div>
+                <div class="filecard"><code class="fileref" data-path="eslint.config.js">eslint.config.js</code><span class="filecard-desc">Flat ESLint config: no-explicit-any, no-var, prefer-const, react-hooks rules.</span></div>
+                <div class="filecard"><code class="fileref" data-path="Dockerfile">Dockerfile</code><span class="filecard-desc">Multi-stage build: node:20-alpine builds, nginx:alpine serves <code>dist/</code>.</span></div>
+                <div class="filecard"><code class="fileref" data-path="docker-compose.yml">docker-compose.yml</code><span class="filecard-desc">Single service, maps <code>${FRONTEND_PORT:-5240}</code> → container :80.</span></div>
+                <div class="filecard"><code class="fileref" data-path="nginx.conf">nginx.conf</code><span class="filecard-desc">SPA fallthrough to <code>index.html</code>, aggressive asset caching, gzip (incl. <code>.glsl/.vert/.frag</code>).</span></div>
+                <div class="filecard"><code class="fileref" data-path="run_webgl_frontend.sh">run_webgl_frontend.sh</code><span class="filecard-desc">macOS/Linux launcher with the <code>[k]/[q]/[v]/[r]</code> shutdown/restart loop.</span></div>
+                <div class="filecard"><code class="fileref" data-path="run_webgl_frontend.bat">run_webgl_frontend.bat</code><span class="filecard-desc">Windows launcher, same loop via <code>goto</code> labels.</span></div>
+                <div class="filecard"><code class="fileref" data-path="claude-teams.sh">claude-teams.sh</code><span class="filecard-desc">Wrapper that launches Claude Code with the experimental agent-teams flag. <code>.bat</code> twin alongside.</span></div>
+                <div class="filecard"><code class="fileref" data-path=".gitattributes">.gitattributes</code><span class="filecard-desc">Cross-OS line-ending normalization (LF for scripts/source, CRLF for .bat/.ps1).</span></div>
+                <div class="filecard"><code class="fileref" data-path=".dockerignore">.dockerignore</code><span class="filecard-desc">Excludes node_modules, dist, docs, tests, .md from the build context.</span></div>
+              </div>
+
+              <h3 class="anchor">src/ (what exists)</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="src/main.tsx">src/main.tsx</code><span class="filecard-desc">Entry point. Mounts <code>&lt;App /&gt;</code> in <code>StrictMode</code> into <code>#root</code>; throws if root missing.</span></div>
+                <div class="filecard"><code class="fileref" data-path="src/App.tsx">src/App.tsx</code><span class="filecard-desc">Root component: an R3F <code>&lt;Canvas&gt;</code> (z-0, dpr [1,2], fov 60) plus an empty DOM overlay div (z-10, pointer-events none). Both layers are stubbed for content.</span></div>
+                <div class="filecard"><code class="fileref" data-path="src/types/glsl.d.ts">src/types/glsl.d.ts</code><span class="filecard-desc">Module declarations so <code>.glsl/.vert/.frag</code> imports resolve to <code>string</code> in TypeScript.</span></div>
+                <div class="filecard"><code class="fileref" data-path="src/types/RoomConfig.ts">src/types/RoomConfig.ts</code><span class="filecard-desc"><code>RoomProps</code> (index, active, spacing) and <code>RoomDefinition</code> (name, component) interfaces.</span></div>
+                <div class="filecard"><code class="fileref" data-path="src/types/ShaderUniforms.ts">src/types/ShaderUniforms.ts</code><span class="filecard-desc"><code>BaseUniforms</code> + per-room uniform interfaces (Nebula/Grid/Crystal). The typed uniform contract.</span></div>
+              </div>
+
+              <div class="callout warn">
+                <div class="callout-title">Planned but NOT on disk yet</div>
+                <div class="callout-body">The directory tree in <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> lists <code>src/components/three/</code>, <code>src/components/ui/</code>, <code>src/hooks/</code>, <code>src/stores/</code>, <code>src/shaders/</code> (and <code>src/workers/</code>). <strong>None of these directories exist in the repo today.</strong> They are the Phase 1 build plan. When you create them, follow the names in that tree (e.g. <code>NebulaRoom.tsx</code>, <code>useScrollNavigation.ts</code>, <code>navigationStore.ts</code>, <code>nebula.vert</code>).</div>
+              </div>
+
+              <h3 class="anchor">Supporting directories</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref dir" data-path="docs/">docs/</code><span class="filecard-desc">Master plan, status.md, versions.md.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="tests/">tests/</code><span class="filecard-desc">Vitest setup only (<code>setup.ts</code>). No test files yet.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path=".github/">.github/</code><span class="filecard-desc">GitHub Actions workflows: <code>ci.yml</code>, <code>release.yml</code>.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path=".codex/">.codex/</code><span class="filecard-desc">Codex agent wiring: slash commands + <code>hooks.json</code>.</span></div>
+                <div class="filecard"><code class="fileref dir" data-path=".agents/">.agents/</code><span class="filecard-desc">Proactive protocol skills (phase-awareness, frontend-protocol).</span></div>
+                <div class="filecard"><code class="fileref dir" data-path="scripts/hooks/">scripts/hooks/</code><span class="filecard-desc">OS-agnostic Node <code>.cjs</code> hook implementations invoked by the agent configs.</span></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 6. CORE MODULES ===================== -->
+        <section class="doc-section" id="modules">
+          <details>
+            <summary><span class="sec-num">6</span><h2>Core modules &amp; components</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">The pieces that exist today, drilled down, plus the planned modules with their exact target files and intended logic so you know precisely what to build next.</p>
+
+              <details class="sub" open>
+                <summary>App shell <span class="sub-tag">src/App.tsx</span></summary>
+                <div class="sub-body">
+                  <p>The only rendering component that exists. It establishes the two-layer architecture: an R3F Canvas at <code>z-index: 0</code> and an empty DOM overlay at <code>z-index: 10</code>. The Canvas is configured with the camera and renderer settings the rest of the framework depends on.</p>
+                  <figure class="code">
+                    <figcaption>src/App.tsx<span class="lang">tsx</span></figcaption>
+                    <pre><code>&lt;Canvas
+  style={{ position: 'fixed', top: 0, left: 0, zIndex: 0 }}
+  gl={{ antialias: true, alpha: false }}
+  dpr={[1, 2]}
+  camera={{ fov: 60, near: 0.1, far: 500, position: [0, 0, 8] }}
+&gt;
+  {/* Experience component will be added here */}
+&lt;/Canvas&gt;</code></pre>
+                  </figure>
+                  <p><strong>Notable settings:</strong> <code>dpr={[1, 2]}</code> caps the device pixel ratio at 2.0 (the mandated optimization); <code>alpha: false</code> gives an opaque canvas (black background from <code>index.html</code>); the camera matches the design spec (<code>fov 60</code>, <code>near 0.1</code>, <code>far 500</code>, start at <code>z=8</code>). The overlay div uses <code>pointerEvents: 'none'</code> so the canvas remains interactive beneath it.</p>
+                  <div class="callout tip">
+                    <div class="callout-title">First implementation step</div>
+                    <div class="callout-body">Replace the <code>{/* Experience component will be added here */}</code> comment with <code>&lt;Experience /&gt;</code> once that component exists, and put <code>&lt;NavigationDots /&gt;</code> in the overlay div. Those two insertions wire the whole framework together.</div>
+                  </div>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="src/App.tsx">src/App.tsx</code><span class="filecard-desc">Two-layer root. The integration point for Experience + DOM overlays.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="src/main.tsx">src/main.tsx</code><span class="filecard-desc">Mounts App in StrictMode.</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Type contracts <span class="sub-tag">src/types/</span></summary>
+                <div class="sub-body">
+                  <p>Three small files define the typed contracts every future room and shader must honor. These exist now and should be extended (not rewritten) as rooms are added.</p>
+                  <figure class="code">
+                    <figcaption>src/types/RoomConfig.ts<span class="lang">ts</span></figcaption>
+                    <pre><code>export interface RoomProps {
+  index: number;
+  active: boolean;
+  spacing: number;
+}
+
+export interface RoomDefinition {
+  name: string;
+  component: React.ComponentType&lt;RoomProps&gt;;
+}</code></pre>
+                  </figure>
+                  <figure class="code">
+                    <figcaption>src/types/ShaderUniforms.ts<span class="lang">ts</span></figcaption>
+                    <pre><code>export interface BaseUniforms {
+  uTime: { value: number };
+  uMouse: { value: Vector2 };
+  uResolution: { value: Vector2 };
+  uProgress: { value: number };
+}
+
+export interface NebulaUniforms extends BaseUniforms {
+  uColor1: { value: Color };
+  uColor2: { value: Color };
+  uPixelRatio: { value: number };
+}</code></pre>
+                  </figure>
+                  <p><code>BaseUniforms</code> is the minimum-uniform contract from the master plan: every shader receives <code>uTime</code>, <code>uMouse</code>, <code>uResolution</code>, and <code>uProgress</code> (the latter reserved for Phase-2 transitions). Per-room interfaces extend it with their specific uniforms.</p>
+                  <div class="filelist">
+                    <div class="filecard"><code class="fileref" data-path="src/types/RoomConfig.ts">src/types/RoomConfig.ts</code><span class="filecard-desc">Room props + room registry entry shape.</span></div>
+                    <div class="filecard"><code class="fileref" data-path="src/types/ShaderUniforms.ts">src/types/ShaderUniforms.ts</code><span class="filecard-desc">Typed uniform interfaces (Base/Nebula/Grid/Crystal).</span></div>
+                    <div class="filecard"><code class="fileref" data-path="src/types/glsl.d.ts">src/types/glsl.d.ts</code><span class="filecard-desc">Lets <code>.vert/.frag/.glsl</code> imports type-check as <code>string</code>.</span></div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Experience orchestrator <span class="sub-tag">planned · src/components/three/Experience.tsx</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> Planned as the scene orchestrator that lives inside the Canvas: it renders the <code>CameraRig</code>, the three room <code>&lt;group&gt;</code>s, and the <code>PostProcessing</code> composer; it reads the navigation/input stores and passes <code>active</code>/<code>index</code>/<code>spacing</code> down to each room. This is what you drop into <code class="fileref" data-path="src/App.tsx">src/App.tsx</code> in place of the placeholder comment.</p>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>CameraRig <span class="sub-tag">planned · src/components/three/CameraRig.tsx</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> Planned to use <code>useFrame</code> to lerp the camera toward <code>targetScene * ROOM_SPACING</code> on the Y axis with the exponential-damping factor below, and lerp the look-at target in sync. The design-spec reference (vanilla form) is:</p>
+                  <figure class="code">
+                    <figcaption>webgl-immersive-integration-prompt.md §4.2 · reference logic</figcaption>
+                    <pre><code>const lerpFactor = 1 - Math.pow(0.04, dt);
+position.x += (target.x - position.x) * lerpFactor;
+position.y += (target.y - position.y) * lerpFactor;
+position.z += (target.z - position.z) * lerpFactor;
+lookCurrent.lerp(lookTarget, lerpFactor);
+camera.lookAt(lookCurrent);</code></pre>
+                  </figure>
+                  <p>In R3F this becomes a <code>useFrame(({ camera }, delta) =&gt; {...})</code> callback reading <code>targetScene</code> from the navigation store. <code>LERP_DECAY = 0.04</code> is a named performance constant in the frontend-protocol skill.</p>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>PostProcessing <span class="sub-tag">planned · src/components/three/PostProcessing.tsx</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> Planned as an <code>&lt;EffectComposer&gt;</code> from <code>@react-three/postprocessing</code> with three passes: <strong>UnrealBloom</strong> (strength 0.8, radius 0.4, threshold 0.85), then a custom <strong>vignette + chromatic aberration</strong> shader pass. Post-processing is mandatory, not optional — it's what takes the look from "three.js" to "Active Theory." The vignette/chromatic fragment logic offsets the R and B channels along the screen vector and darkens edges via <code>smoothstep</code> on distance-from-center.</p>
+                  <figure class="code">
+                    <figcaption>vignette + chromatic · reference fragment (design spec §4.6)</figcaption>
+                    <pre><code>vec2 offset = (vUv - 0.5) * uChromaticAberration;
+float r = texture2D(tDiffuse, vUv + offset).r;
+float g = texture2D(tDiffuse, vUv).g;
+float b = texture2D(tDiffuse, vUv - offset).b;
+float dist = length(vUv - 0.5);
+float vignette = smoothstep(0.7, 0.3, dist);
+vec3 color = vec3(r, g, b) * mix(1.0 - uIntensity, 1.0, vignette);</code></pre>
+                  </figure>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Room 0 — Nebula Field <span class="sub-tag">planned · src/components/three/NebulaRoom.tsx + nebula.vert/.frag</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> A <code>THREE.Points</code> cloud (4000–8000 particles in a sphere) with per-particle <code>aRandom</code>/<code>aSize</code> attributes, additive blending, and <code>depthWrite: false</code>. The vertex shader displaces particles with 3D simplex noise and pushes them away from the mouse; the fragment shader draws soft circles and mixes two colors by the per-particle random.</p>
+                  <figure class="code">
+                    <figcaption>nebula vertex core · reference (design spec §5)</figcaption>
+                    <pre><code>float n = snoise(position * 0.3 + uTime * 0.15);
+vec3 pos = position + normal * n * 0.8;
+// mouse repulsion in view space
+float dist = length(mvPos.xy - uMouse * 3.0);
+float push = smoothstep(2.0, 0.0, dist) * 0.5;
+gl_PointSize = aSize * uPixelRatio * (80.0 / -mvPos.z);</code></pre>
+                  </figure>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Room 1 — Grid Horizon <span class="sub-tag">planned · src/components/three/GridRoom.tsx + grid.vert/.frag</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> A wireframe <code>PlaneGeometry(20, 20, 80, 80)</code> rotated ~45° on X. The vertex shader sums two octaves of simplex noise for terrain elevation and adds a mouse-driven ripple wave; the fragment shader maps color to elevation and fades the edges by UV distance.</p>
+                  <figure class="code">
+                    <figcaption>grid vertex core · reference (design spec §5)</figcaption>
+                    <pre><code>float elevation = snoise(vec3(pos.x*0.15 + uTime*0.05, pos.y*0.15, uTime*0.1)) * 2.0;
+elevation += snoise(vec3(pos.x*0.4, pos.y*0.4 + uTime*0.08, 0.0)) * 0.5;
+float mouseDist = length(pos.xy - uMouse * 10.0);
+elevation += sin(mouseDist*0.8 - uTime*3.0) * 0.3 * smoothstep(6.0, 0.0, mouseDist);
+pos.z = elevation;</code></pre>
+                  </figure>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Room 2 — Crystal Lattice <span class="sub-tag">planned · src/components/three/CrystalRoom.tsx + crystal.vert/.frag</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> An <code>InstancedBufferGeometry</code> over <code>IcosahedronGeometry(0.15, 0)</code> with 200–400 instances, per-instance <code>aOffset</code>/<code>aSeed</code>. The vertex shader applies per-instance rotation + orbital motion and computes a fresnel term; the fragment shader mixes two colors by seed and drives alpha from fresnel — a floating field of crystals with glowing edges. One draw call for all instances.</p>
+                  <figure class="code">
+                    <figcaption>crystal fresnel · reference (design spec §5)</figcaption>
+                    <pre><code>vec3 viewDir = normalize(-mvPosition.xyz);
+vFresnel = pow(1.0 - abs(dot(viewDir, vNormal)), 2.0);</code></pre>
+                  </figure>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Navigation hooks &amp; dots <span class="sub-tag">planned · src/hooks/ + src/components/ui/</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> <code>useScrollNavigation.ts</code> binds wheel (with a cooldown to prevent rapid-fire), arrow keys + spacebar, and basic touch swipe, clamping the result to <code>[0, sceneCount-1]</code> and calling <code>goToScene</code>. <code>useMouseTracking.ts</code> normalizes pointer coords to −1…1 and lerps them. <code>NavigationDots.tsx</code> (DOM overlay) reflects the current scene and allows click-to-jump.</p>
+                  <figure class="code">
+                    <figcaption>scroll cooldown · reference (design spec §4.3)</figcaption>
+                    <pre><code>onWheel(e) {
+  e.preventDefault();
+  if (this.cooldown) return;
+  this.navigate(Math.sign(e.deltaY));
+}
+// after navigate(): setTimeout(() =&gt; { this.cooldown = false; }, 1200);</code></pre>
+                  </figure>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Zustand stores <span class="sub-tag">planned · src/stores/navigationStore.ts + inputStore.ts</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> Two stores form the cross-layer bridge. <code>navigationStore</code> holds <code>currentScene</code>, <code>targetScene</code>, <code>transitioning</code>, <code>sceneCount</code>, and a <code>goToScene(index)</code> action. <code>inputStore</code> holds <code>mouse</code>, <code>mouseTarget</code>, <code>scrollProgress</code>, and <code>time</code>. The store shapes are specified verbatim in <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §2.</p>
+                  <div class="callout danger">
+                    <div class="callout-title">Do not put Three.js objects in the stores</div>
+                    <div class="callout-body">Never store geometries, materials, textures, meshes, cameras, or scenes in Zustand or React state. They are mutable class instances — storing them causes serialization issues and needless re-renders. Use <code>useRef</code> for all mutable Three.js objects. Only primitives, plain objects, and arrays of primitives belong in the stores.</div>
+                  </div>
+                </div>
+              </details>
+
+              <details class="sub">
+                <summary>Shared GLSL library <span class="sub-tag">planned · src/shaders/includes/noise.glsl</span></summary>
+                <div class="sub-body">
+                  <p><strong>Not built yet.</strong> The Ashima Arts / Stefan Gustavson 3D simplex noise (<code>snoise(vec3)</code>) goes here, imported via <code>vite-plugin-glsl</code>'s <code>#include</code> into every shader that needs organic motion. The full implementation is reproduced in the design spec §10 — copy it verbatim. Every room's vertex shader depends on it.</p>
+                </div>
+              </details>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 7. DATA MODELS & CONTRACTS ===================== -->
+        <section class="doc-section" id="data-model">
+          <details>
+            <summary><span class="sec-num">7</span><h2>Data models &amp; contracts</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">There is no backend and no database — the "contracts" here are the TypeScript interfaces and the shader-uniform protocol that cross the React ↔ Three.js boundary.</p>
+
+              <h3 class="anchor">Shared store state (planned)</h3>
+              <p>Defined in <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code>; the stores that will hold these are not built yet.</p>
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Field</th><th>Type</th><th>Store</th><th>Meaning</th></tr></thead>
+                <tbody>
+                  <tr><td><code>currentScene</code></td><td><code>number</code></td><td>navigation</td><td>Index of the room the camera has settled on.</td></tr>
+                  <tr><td><code>targetScene</code></td><td><code>number</code></td><td>navigation</td><td>Index the camera is lerping toward.</td></tr>
+                  <tr><td><code>transitioning</code></td><td><code>boolean</code></td><td>navigation</td><td>True while the camera is mid-transition.</td></tr>
+                  <tr><td><code>sceneCount</code></td><td><code>number</code></td><td>navigation</td><td>Total rooms (3 in Phase 1). Must support arbitrary counts.</td></tr>
+                  <tr><td><code>goToScene</code></td><td><code>(i: number) =&gt; void</code></td><td>navigation</td><td>Action: clamp + set target + flip transitioning.</td></tr>
+                  <tr><td><code>mouse</code></td><td><code>{ x, y }</code></td><td>input</td><td>Lerped, normalized pointer position (−1…1).</td></tr>
+                  <tr><td><code>mouseTarget</code></td><td><code>{ x, y }</code></td><td>input</td><td>Raw pointer target the lerp chases.</td></tr>
+                  <tr><td><code>scrollProgress</code></td><td><code>number</code></td><td>input</td><td>Normalized scroll position.</td></tr>
+                  <tr><td><code>time</code></td><td><code>number</code></td><td>input</td><td>Elapsed seconds, fed to <code>uTime</code>.</td></tr>
+                </tbody>
+              </table></div>
+
+              <h3 class="anchor">Shader uniform contract</h3>
+              <p>Every room shader receives these at minimum. Defined in code today by <code>BaseUniforms</code> in <code class="fileref" data-path="src/types/ShaderUniforms.ts">src/types/ShaderUniforms.ts</code> and documented in the master plan §8.</p>
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Uniform</th><th>GLSL type</th><th>Meaning</th></tr></thead>
+                <tbody>
+                  <tr><td><code>uTime</code></td><td><code>float</code></td><td>Elapsed time in seconds.</td></tr>
+                  <tr><td><code>uMouse</code></td><td><code>vec2</code></td><td>Lerped mouse position, −1…1.</td></tr>
+                  <tr><td><code>uResolution</code></td><td><code>vec2</code></td><td>Viewport width/height in pixels (updated on resize).</td></tr>
+                  <tr><td><code>uProgress</code></td><td><code>float</code></td><td>Room transition progress 0…1 (reserved for Phase 2 transitions).</td></tr>
+                </tbody>
+              </table></div>
+
+              <h3 class="anchor">Room props contract</h3>
+              <p>Every room component implements <code>RoomProps</code> from <code class="fileref" data-path="src/types/RoomConfig.ts">src/types/RoomConfig.ts</code>:</p>
+              <dl class="doc-dl">
+                <dt>index</dt><dd>The room's ordinal; positions its <code>&lt;group&gt;</code> at <code>y = -index * spacing</code>.</dd>
+                <dt>active</dt><dd>Whether this room is current. Rooms update uniforms only when <code>active</code> or adjacent (<code>|index − current| &lt;= 1</code>).</dd>
+                <dt>spacing</dt><dd>The world-space gap between rooms (<code>ROOM_SPACING = 30</code>).</dd>
+              </dl>
+
+              <figure class="diagram">
+                <div class="mermaid">
+classDiagram
+    class BaseUniforms {
+      uTime
+      uMouse
+      uResolution
+      uProgress
+    }
+    class NebulaUniforms {
+      uColor1
+      uColor2
+      uPixelRatio
+    }
+    class GridUniforms {
+      uColor1
+      uColor2
+    }
+    class CrystalUniforms {
+      uColor1
+      uColor2
+    }
+    BaseUniforms &lt;|-- NebulaUniforms
+    BaseUniforms &lt;|-- GridUniforms
+    BaseUniforms &lt;|-- CrystalUniforms
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>classDiagram
+    class BaseUniforms {
+      uTime
+      uMouse
+      uResolution
+      uProgress
+    }
+    class NebulaUniforms {
+      uColor1
+      uColor2
+      uPixelRatio
+    }
+    class GridUniforms {
+      uColor1
+      uColor2
+    }
+    class CrystalUniforms {
+      uColor1
+      uColor2
+    }
+    BaseUniforms &lt;|-- NebulaUniforms
+    BaseUniforms &lt;|-- GridUniforms
+    BaseUniforms &lt;|-- CrystalUniforms</code></pre></figure></div>
+                <figcaption>Uniform interface hierarchy as defined in <code>src/types/ShaderUniforms.ts</code>.</figcaption>
+              </figure>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 8. KEY LOGIC & FORMULAS ===================== -->
+        <section class="doc-section" id="key-logic">
+          <details>
+            <summary><span class="sec-num">8</span><h2>Key logic, math &amp; shader primitives</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">The load-bearing math the framework is built on. These formulas come from the design spec and are the source of truth for the (unbuilt) implementation.</p>
+
+              <h3 class="anchor">Exponential lerp (camera + mouse damping)</h3>
+              <p>The defining motion of the whole framework. For a per-frame delta <code>dt</code>:</p>
+              <figure class="code">
+                <figcaption>frame-rate-independent damping</figcaption>
+                <pre><code>lerpFactor = 1 - pow(decay, dt)      // decay = 0.04 for camera
+value     += (target - value) * lerpFactor</code></pre>
+              </figure>
+              <p>Because <code>pow(decay, dt)</code> scales with the actual frame time, the visible motion is identical at 30fps and 144fps. The mouse uses a softer per-frame factor (~0.05) for a weighted feel.</p>
+
+              <h3 class="anchor">Soft particle circles</h3>
+              <figure class="code">
+                <figcaption>fragment · point sprite alpha</figcaption>
+                <pre><code>float d = length(gl_PointCoord - 0.5);
+float alpha = smoothstep(0.5, 0.0, d);   // 1 at center, 0 at edge</code></pre>
+              </figure>
+
+              <h3 class="anchor">Fresnel edge glow</h3>
+              <figure class="code">
+                <figcaption>vertex/fragment · rim term</figcaption>
+                <pre><code>float fresnel = pow(1.0 - abs(dot(viewDirection, normal)), exponent);</code></pre>
+              </figure>
+
+              <h3 class="anchor">Color mix by attribute</h3>
+              <figure class="code">
+                <figcaption>per-vertex / per-instance two-color mix</figcaption>
+                <pre><code>vec3 color = mix(colorA, colorB, vRandom);</code></pre>
+              </figure>
+
+              <div class="callout key">
+                <div class="callout-title">Key concept — additive blending = glow</div>
+                <div class="callout-body">Set <code>blending: THREE.AdditiveBlending</code> and <code>depthWrite: false</code>. Colors add instead of replacing: dark pixels become transparent, bright pixels stack into glow. This is the foundation of the nebula and crystal looks, and it composes with the bloom pass.</div>
+              </div>
+
+              <h3 class="anchor">Named performance constants</h3>
+              <p>From the frontend-protocol skill (<code class="fileref" data-path=".agents/skills/frontend-protocol/SKILL.md">.agents/skills/frontend-protocol/SKILL.md</code>) — hard-code these as named constants, not magic numbers:</p>
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Constant</th><th>Value</th><th>Use</th></tr></thead>
+                <tbody>
+                  <tr><td><code>ROOM_SPACING</code></td><td><code>30</code></td><td>World-space Y gap between rooms.</td></tr>
+                  <tr><td><code>LERP_DECAY</code></td><td><code>0.04</code></td><td>Camera lerp decay factor.</td></tr>
+                  <tr><td><code>MAX_PIXEL_RATIO</code></td><td><code>2</code></td><td>Cap for pixel ratio (already applied via <code>dpr={[1,2]}</code>).</td></tr>
+                  <tr><td><code>PARTICLE_COUNT_DESKTOP</code></td><td><code>6000</code></td><td>Nebula particle count on desktop.</td></tr>
+                  <tr><td><code>INSTANCE_COUNT</code></td><td><code>300</code></td><td>Crystal instances.</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 9. CONFIG & ENVIRONMENT ===================== -->
+        <section class="doc-section" id="config">
+          <details>
+            <summary><span class="sec-num">9</span><h2>Configuration &amp; environment</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">There are no secrets and no <code>.env.example</code> in the repo. The only env var is the port, with a default baked into compose and the launchers.</p>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Variable</th><th>Default</th><th>Where</th><th>Meaning</th></tr></thead>
+                <tbody>
+                  <tr><td><code>FRONTEND_PORT</code></td><td><code>5240</code></td><td><code class="fileref" data-path="docker-compose.yml">docker-compose.yml</code> / launchers</td><td>Host port mapped to the nginx container's :80.</td></tr>
+                </tbody>
+              </table></div>
+
+              <h3 class="anchor">Build &amp; tool config</h3>
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Setting</th><th>Value</th><th>File</th></tr></thead>
+                <tbody>
+                  <tr><td>Dev server port</td><td><code>5240</code>, <code>host: true</code></td><td><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></td></tr>
+                  <tr><td>Path alias</td><td><code>@</code> → <code>./src</code></td><td><code class="fileref" data-path="vite.config.ts">vite.config.ts</code> + <code class="fileref" data-path="tsconfig.json">tsconfig.json</code></td></tr>
+                  <tr><td>Build sourcemaps</td><td><code>true</code></td><td><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></td></tr>
+                  <tr><td>Test environment</td><td><code>jsdom</code>, globals on</td><td><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></td></tr>
+                  <tr><td>Test include glob</td><td><code>tests/**/*.test.{ts,tsx}</code></td><td><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></td></tr>
+                  <tr><td>Coverage exclude</td><td><code>src/types/**</code>, <code>src/shaders/**</code>, <code>src/main.tsx</code></td><td><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></td></tr>
+                  <tr><td>TS strictness</td><td>strict + <code>noUncheckedIndexedAccess</code> + <code>noUnusedLocals/Parameters</code></td><td><code class="fileref" data-path="tsconfig.json">tsconfig.json</code></td></tr>
+                </tbody>
+              </table></div>
+
+              <div class="callout note">
+                <div class="callout-title">The <code>passWithNoTests</code> flag</div>
+                <div class="callout-body"><code class="fileref" data-path="vite.config.ts">vite.config.ts</code> sets <code>test.passWithNoTests: true</code> so the CI <code>test</code> stage exits 0 during the scaffold phase. It's a no-op once real test files land — but remember it's there if you ever wonder why an empty test run is "green."</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 10. HOW TO RUN ===================== -->
+        <section class="doc-section" id="run">
+          <details>
+            <summary><span class="sec-num">10</span><h2>How to run it</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Local dev via Vite, or containerized via the launcher scripts. Both serve on port 5240.</p>
+
+              <h3 class="anchor">Local dev (Vite, hot reload)</h3>
+              <ol class="steps">
+                <li>Install deps: <code>pnpm install</code>.</li>
+                <li>Start the dev server: <code>pnpm dev</code>.</li>
+                <li>Open <code>http://localhost:5240</code>. Today you'll see a black full-viewport canvas (no 3D content yet).</li>
+              </ol>
+              <p>Other scripts from <code class="fileref" data-path="package.json">package.json</code>: <code>pnpm lint</code> (ESLint), <code>pnpm test</code> (Vitest run), <code>pnpm test:watch</code>, <code>pnpm test:coverage</code>, <code>pnpm build</code> (<code>tsc -b &amp;&amp; vite build</code>), <code>pnpm preview</code>.</p>
+
+              <h3 class="anchor">Docker (production-like, nginx)</h3>
+              <ol class="steps">
+                <li>macOS/Linux: run <code class="fileref" data-path="run_webgl_frontend.sh">run_webgl_frontend.sh</code>. Windows: run <code class="fileref" data-path="run_webgl_frontend.bat">run_webgl_frontend.bat</code>.</li>
+                <li>The script runs <code>docker compose up --build -d</code>, waits for the frontend to respond, and opens the browser at <code>http://localhost:5240</code>.</li>
+                <li>At the prompt, pick a control: <code>[k]</code> stop/keep image · <code>[q]</code> stop/remove image · <code>[v]</code> full cleanup (images + volumes) · <code>[r]</code> full restart (down → rebuild → relaunch).</li>
+              </ol>
+
+              <div class="callout warn">
+                <div class="callout-title">Windows + PyCharm gotcha (from Amram's workflow memory)</div>
+                <div class="callout-body">The <code>.bat</code> launcher's menu uses <code>set /p</code>, which needs a real terminal. Right-click → Run in PyCharm is a non-TTY batch run-config where <code>set /p</code> hangs and output buffers. Run the <code>.bat</code> from the Terminal tab (or enable "Emulate terminal in output console") rather than patching the script.</div>
+              </div>
+
+              <div class="callout note">
+                <div class="callout-title">Agent-teams launchers</div>
+                <div class="callout-body"><code class="fileref" data-path="claude-teams.sh">claude-teams.sh</code> / <code>claude-teams.bat</code> just export <code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1</code> and exec <code>claude</code>. They have nothing to do with running the app — they launch Claude Code with the experimental agent-teams flag.</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 11. HOW TO EDIT / EXTEND ===================== -->
+        <section class="doc-section" id="editing">
+          <details>
+            <summary><span class="sec-num">11</span><h2>How to edit &amp; extend it</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Practical, owner-focused recipes. Since the 3D code is unbuilt, the highest-leverage "edits" are the Phase 1 build steps themselves — in dependency order.</p>
+
+              <h3 class="anchor">The recommended Phase 1 build order</h3>
+              <ol class="steps">
+                <li>Create <code>src/stores/navigationStore.ts</code> and <code>src/stores/inputStore.ts</code> (Zustand). Shapes are in <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §2. Test these first — pure logic, easy 100% coverage.</li>
+                <li>Add <code>src/components/three/Experience.tsx</code> and drop <code>&lt;Experience /&gt;</code> into <code class="fileref" data-path="src/App.tsx">src/App.tsx</code> (replacing the placeholder comment).</li>
+                <li>Add <code>src/components/three/CameraRig.tsx</code> with the exponential lerp reading <code>targetScene</code>.</li>
+                <li>Add <code>src/hooks/useScrollNavigation.ts</code> + <code>src/hooks/useMouseTracking.ts</code> and wire them in <code>Experience</code> / <code>App</code>.</li>
+                <li>Add <code>src/shaders/includes/noise.glsl</code> (copy snoise verbatim from the design spec §10).</li>
+                <li>Build <strong>Nebula Room first</strong> end-to-end (component + <code>nebula.vert</code> + <code>nebula.frag</code>) — particles are the most forgiving start.</li>
+                <li>Add <code>src/components/three/PostProcessing.tsx</code> (bloom + vignette/chromatic). Even bloom alone transforms the look.</li>
+                <li>Build Grid Room, then Crystal Room.</li>
+                <li>Add <code>src/components/ui/NavigationDots.tsx</code> in the DOM overlay div.</li>
+                <li>Add resize handling that updates renderer, camera aspect, and <code>uResolution</code> uniforms.</li>
+              </ol>
+
+              <h3 class="anchor">To add a new room</h3>
+              <div class="steps">
+                <ol class="steps">
+                  <li>Create <code>src/components/three/&lt;Name&gt;Room.tsx</code> implementing <code>RoomProps</code> from <code class="fileref" data-path="src/types/RoomConfig.ts">src/types/RoomConfig.ts</code>. Position its <code>&lt;group&gt;</code> at <code>y = -index * spacing</code>.</li>
+                  <li>Create <code>src/shaders/&lt;name&gt;.vert</code> and <code>&lt;name&gt;.frag</code> (never inline GLSL). Import shared noise from <code>includes/noise.glsl</code>.</li>
+                  <li>Add a <code>&lt;Name&gt;Uniforms</code> interface to <code class="fileref" data-path="src/types/ShaderUniforms.ts">src/types/ShaderUniforms.ts</code> extending <code>BaseUniforms</code>.</li>
+                  <li>Register the room in <code>Experience.tsx</code> and bump <code>sceneCount</code> in the navigation store.</li>
+                  <li>Update uniforms only when <code>active</code> or adjacent; dispose geometry/material on unmount.</li>
+                </ol>
+              </div>
+
+              <div class="callout danger">
+                <div class="callout-title">Do not break these invariants</div>
+                <div class="callout-body">No built-in materials (<code>ShaderMaterial</code> only). No inline GLSL strings. No Three.js objects in Zustand/React state — use refs. Dispose every geometry/material/texture you create on unmount. These are enforced by the <code class="fileref" data-path=".agents/skills/frontend-protocol/SKILL.md">frontend-protocol</code> skill and the <code class="fileref" data-path="scripts/hooks/post-tool-use.cjs">post-tool-use.cjs</code> hook, which injects a reminder whenever you edit a file under <code>shaders/</code>, <code>components/three/</code>, or <code>stores/</code>.</div>
+              </div>
+
+              <h3 class="anchor">After any change</h3>
+              <p>Per <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §9: update <code class="fileref" data-path="docs/status.md">docs/status.md</code> and <code class="fileref" data-path="docs/versions.md">docs/versions.md</code>, compute the next semver yourself, and do <strong>not</strong> edit <code>package.json</code>'s version directly (the release workflow owns that). Git is hands-off — the owner commits.</p>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 12. TESTING ===================== -->
+        <section class="doc-section" id="testing">
+          <details>
+            <summary><span class="sec-num">12</span><h2>Testing</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Vitest + React Testing Library, jsdom environment. The harness is wired; no test files exist yet.</p>
+
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="tests/setup.ts">tests/setup.ts</code><span class="filecard-desc">Imports <code>cleanup</code> from RTL and calls it in <code>afterEach</code> — Vitest does NOT auto-cleanup like Jest. Also imports <code>@testing-library/jest-dom</code>.</span></div>
+              </div>
+
+              <p><strong>What to test</strong> (per <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §5): store logic (navigation transitions, input updates), hook logic (scroll index clamping, mouse normalization), JS utility helpers (lerp/clamp/smoothstep), and component rendering (rooms mount without crashing, dots reflect state). <strong>What not to mock:</strong> WebGL context, shader compilation, Three.js math — test against real computations. Use <code>expect(value).toBeCloseTo(expected, precision)</code> for floats, never exact equality.</p>
+
+              <div class="callout tip">
+                <div class="callout-title">Coverage</div>
+                <div class="callout-body">The global target is 100%, enforced in CI. <code>src/types/**</code>, <code>src/shaders/**</code>, and <code>src/main.tsx</code> are excluded from coverage (declarations, GLSL, and the bootstrap entry are not unit-testable). Tests live in <code class="fileref dir" data-path="tests/">tests/</code> and match <code>tests/**/*.test.{ts,tsx}</code>.</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 13. BUILD / CI / DEPLOY ===================== -->
+        <section class="doc-section" id="ci">
+          <details>
+            <summary><span class="sec-num">13</span><h2>Build, CI &amp; deployment</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">CI is GitHub Actions (not GitLab, despite CLAUDE.md §7's heading). Two workflows: a four-stage CI pipeline and a manual release/version-bump.</p>
+
+              <h3 class="anchor">CI pipeline</h3>
+              <p>Defined in <code class="fileref" data-path=".github/workflows/ci.yml">.github/workflows/ci.yml</code>. Triggers on push/PR to <code>main</code>, <code>staging</code>, <code>dev</code> (and manual dispatch), with in-progress cancellation. Stages run sequentially via <code>needs</code>:</p>
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Stage</th><th>Command</th><th>Gate</th></tr></thead>
+                <tbody>
+                  <tr><td>lint</td><td><code>pnpm lint</code></td><td>Fails on any ESLint error.</td></tr>
+                  <tr><td>test</td><td><code>pnpm test -- --coverage</code> (+ junit report)</td><td>Needs lint. Fails on test failure / coverage gap.</td></tr>
+                  <tr><td>build</td><td><code>pnpm build</code>, upload <code>dist/</code> artifact</td><td>Needs test. Must compile.</td></tr>
+                  <tr><td>docker-build</td><td><code>docker/build-push-action</code> (no push, GHA cache)</td><td>Needs build. Only on <code>main</code>/<code>staging</code>.</td></tr>
+                </tbody>
+              </table></div>
+
+              <h3 class="anchor">Release / versioning</h3>
+              <p><code class="fileref" data-path=".github/workflows/release.yml">.github/workflows/release.yml</code> is a manual <code>workflow_dispatch</code> with a <code>bump</code> choice (patch/minor/major). On <code>main</code>, it runs <code>pnpm version</code>, commits the bumped <code>package.json</code> + lockfile, tags, and pushes. <strong>This is the only thing that should edit the version field</strong> — never bump it by hand.</p>
+
+              <figure class="diagram">
+                <div class="mermaid">
+graph LR
+    L[lint] --> T[test]
+    T --> B[build]
+    B --> D[docker-build]
+    D -. main/staging only .-> X[image cached]
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>graph LR
+    L[lint] --&gt; T[test]
+    T --&gt; B[build]
+    B --&gt; D[docker-build]
+    D -. main/staging only .-&gt; X[image cached]</code></pre></figure></div>
+                <figcaption>GitHub Actions CI stage dependencies.</figcaption>
+              </figure>
+
+              <h3 class="anchor">Docker image</h3>
+              <p><code class="fileref" data-path="Dockerfile">Dockerfile</code> is a two-stage build: stage 1 (<code>node:20-alpine</code>) enables pnpm via corepack, installs with <code>--frozen-lockfile</code>, and runs <code>pnpm build</code>; stage 2 (<code>nginx:alpine</code>) copies <code class="fileref" data-path="nginx.conf">nginx.conf</code> and the built <code>dist/</code>, exposes :80, and runs nginx. The nginx config does SPA fallthrough to <code>index.html</code> and caches/gzips assets including <code>.glsl/.vert/.frag</code>.</p>
+
+              <div class="callout warn">
+                <div class="callout-title">Doc drift — CLAUDE.md says GitLab</div>
+                <div class="callout-body"><code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §7 and the directory tree reference <code>.gitlab-ci.yml</code> and a <code>.claude/</code> dir. Neither exists. The real CI is GitHub Actions under <code class="fileref dir" data-path=".github/">.github/workflows/</code>, and the agent wiring is in <code>.codex/</code> + <code>.agents/</code>. Trust the files, not the prose.</div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 14. AGENT TOOLING ===================== -->
+        <section class="doc-section" id="agent-tooling">
+          <details>
+            <summary><span class="sec-num">14</span><h2>Agent tooling (Claude / Codex)</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">This repo is built with AI agents and carries first-class agent wiring: instruction files, proactive skills, slash commands, and OS-agnostic Node hooks.</p>
+
+              <h3 class="anchor">Instruction files</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code><span class="filecard-desc">Claude's mandatory pre-change read: architecture rules, phase scope, performance, disposal protocol, completion gate.</span></div>
+                <div class="filecard"><code class="fileref" data-path="AGENTS.md">AGENTS.md</code><span class="filecard-desc">Byte-for-byte Codex twin of CLAUDE.md (kept in sync).</span></div>
+              </div>
+
+              <h3 class="anchor">Proactive skills</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path=".agents/skills/phase-awareness/SKILL.md">.agents/skills/phase-awareness/SKILL.md</code><span class="filecard-desc">Orients the agent to the current phase and enforces the IN/OUT-of-scope boundaries before any implementation.</span></div>
+                <div class="filecard"><code class="fileref" data-path=".agents/skills/frontend-protocol/SKILL.md">.agents/skills/frontend-protocol/SKILL.md</code><span class="filecard-desc">Enforces disposal, no-objects-in-state, shader file isolation, the built-in-material ban, instancing, active-room-only updates, and the named performance constants.</span></div>
+              </div>
+
+              <h3 class="anchor">Slash commands</h3>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path=".codex/commands/scaffold.md">.codex/commands/scaffold.md</code><span class="filecard-desc">Guided scaffolding of structure/modules.</span></div>
+                <div class="filecard"><code class="fileref" data-path=".codex/commands/review.md">.codex/commands/review.md</code><span class="filecard-desc">Standards review of changed code (report only).</span></div>
+                <div class="filecard"><code class="fileref" data-path=".codex/commands/pre-commit.md">.codex/commands/pre-commit.md</code><span class="filecard-desc">Read-only pre-commit audit with a READY/NOT-READY verdict.</span></div>
+                <div class="filecard"><code class="fileref" data-path=".codex/commands/validate.md">.codex/commands/validate.md</code><span class="filecard-desc">Domain/correctness validation pass.</span></div>
+              </div>
+
+              <h3 class="anchor">Hooks</h3>
+              <p><code class="fileref" data-path=".codex/hooks.json">.codex/hooks.json</code> registers a <code>PostToolUse</code> hook (on <code>Write|Edit</code>) and two <code>Stop</code> hooks, each invoking a Node <code>.cjs</code> file via <code>node -e require(...)</code> — the OS-agnostic pattern from Amram's workflow memory (no bash/jq/python; works on Windows and macOS alike).</p>
+              <div class="filelist">
+                <div class="filecard"><code class="fileref" data-path="scripts/hooks/post-tool-use.cjs">scripts/hooks/post-tool-use.cjs</code><span class="filecard-desc">Injects path-specific invariant reminders for edits under shaders/, components/three/, stores/.</span></div>
+                <div class="filecard"><code class="fileref" data-path="scripts/hooks/stop.cjs">scripts/hooks/stop.cjs</code><span class="filecard-desc">Stop hook (turn-end housekeeping).</span></div>
+                <div class="filecard"><code class="fileref" data-path="scripts/hooks/stop-memory.cjs">scripts/hooks/stop-memory.cjs</code><span class="filecard-desc">Stop hook for memory updates.</span></div>
+                <div class="filecard"><code class="fileref" data-path="scripts/hooks/hookUtils.cjs">scripts/hooks/hookUtils.cjs</code><span class="filecard-desc">Shared helpers: read stdin payload, resolve tool file path, POSIX-ify, emit.</span></div>
+              </div>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 15. PERFORMANCE ===================== -->
+        <section class="doc-section" id="performance">
+          <details>
+            <summary><span class="sec-num">15</span><h2>Performance targets &amp; rules</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Targets and mandatory optimizations from <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §3 and the design spec §7. Design for these now even though enforcement comes later.</p>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Metric</th><th>Target</th></tr></thead>
+                <tbody>
+                  <tr><td>Frame rate</td><td>60fps mid-range GPU, 30fps min mobile</td></tr>
+                  <tr><td>LCP</td><td>&lt; 2s</td></tr>
+                  <tr><td>JS bundle (excl. three.js)</td><td>&lt; 300KB gzipped</td></tr>
+                  <tr><td>Draw calls / frame</td><td>&lt; 20</td></tr>
+                  <tr><td>Particle count</td><td>4000–8000 desktop, 1000–2000 mobile</td></tr>
+                </tbody>
+              </table></div>
+
+              <dl class="doc-dl">
+                <dt>Update visible rooms only</dt><dd>Check <code>Math.abs(roomIndex - activeIndex) &lt;= 1</code> before touching uniforms.</dd>
+                <dt>Instance &gt;100 identical objects</dt><dd><code>InstancedMesh</code> / <code>InstancedBufferGeometry</code> — one draw call for hundreds.</dd>
+                <dt>Cap pixel ratio</dt><dd><code>Math.min(devicePixelRatio, 2)</code> — already applied via <code>dpr={[1,2]}</code> in App.tsx.</dd>
+                <dt>BufferGeometry only</dt><dd>Never the deprecated <code>Geometry</code>.</dd>
+                <dt>Freeze distant uniforms</dt><dd>Don't update <code>uTime</code>/<code>uMouse</code> on rooms 2+ away.</dd>
+                <dt>Dispose on transition</dt><dd>Dispose geometries/materials when a room moves far away.</dd>
+              </dl>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 16. ROADMAP ===================== -->
+        <section class="doc-section" id="roadmap">
+          <details>
+            <summary><span class="sec-num">16</span><h2>Roadmap &amp; phases</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Three phases, currently at the very start of Phase 1. Authoritative breakdown in <code class="fileref" data-path="docs/WEBGL_FRONTEND_MASTER_PLAN.md">docs/WEBGL_FRONTEND_MASTER_PLAN.md</code>.</p>
+
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>Phase</th><th>Focus</th><th>Status</th></tr></thead>
+                <tbody>
+                  <tr><td><strong>1 (current)</strong></td><td>Renderer, camera, scroll nav, post-FX, 3 rooms (Nebula, Grid, Crystal)</td><td>In progress — infra done, 3D unbuilt</td></tr>
+                  <tr><td>2</td><td>DOM overlay, scene labels/HUD, loading screen, 4th room (Void Sphere), GSAP ScrollTrigger, content mapping</td><td>Planned</td></tr>
+                  <tr><td>3</td><td>GPU-tier detection, mobile particle reduction, touch nav, <code>prefers-reduced-motion</code>, Draco/KTX2, lazy-load</td><td>Planned</td></tr>
+                </tbody>
+              </table></div>
+
+              <figure class="diagram">
+                <div class="mermaid">
+gantt
+    title WebGL Frontend phases
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+    section Phase 1 Core
+        Renderer + Canvas      :p1a, 2026-04-13, 2d
+        Camera lerp            :p1b, after p1a, 2d
+        Scroll nav             :p1c, after p1b, 1d
+        Post-processing        :p1e, after p1a, 2d
+        Nebula room            :p1f, after p1e, 3d
+        Grid room              :p1g, after p1f, 2d
+        Crystal room           :p1h, after p1g, 2d
+        Tests + CI             :p1j, after p1h, 2d
+    section Phase 2 Content
+        DOM overlay            :p2a, after p1j, 3d
+        Void sphere room       :p2d, after p2a, 3d
+        Content mapping        :p2f, after p2d, 2d
+    section Phase 3 Perf
+        Device detection       :p3a, after p2f, 2d
+        Mobile + touch         :p3b, after p3a, 2d
+        Final polish           :p3f, after p3b, 3d
+                </div>
+                <div class="mermaid-fallback"><figure class="code"><figcaption>diagram source · mermaid</figcaption><pre><code>gantt
+    title WebGL Frontend phases
+    dateFormat YYYY-MM-DD
+    axisFormat %b %d
+    section Phase 1 Core
+        Renderer + Canvas      :p1a, 2026-04-13, 2d
+        Camera lerp            :p1b, after p1a, 2d
+        Scroll nav             :p1c, after p1b, 1d
+        Post-processing        :p1e, after p1a, 2d
+        Nebula room            :p1f, after p1e, 3d
+        Grid room              :p1g, after p1f, 2d
+        Crystal room           :p1h, after p1g, 2d
+        Tests + CI             :p1j, after p1h, 2d
+    section Phase 2 Content
+        DOM overlay            :p2a, after p1j, 3d
+        Void sphere room       :p2d, after p2a, 3d
+        Content mapping        :p2f, after p2d, 2d
+    section Phase 3 Perf
+        Device detection       :p3a, after p2f, 2d
+        Mobile + touch         :p3b, after p3a, 2d
+        Final polish           :p3f, after p3b, 3d</code></pre></figure></div>
+                <figcaption>Phase timeline (adapted from the master plan Gantt). Dates are planning placeholders.</figcaption>
+              </figure>
+
+              <h3 class="anchor">Phase 1 completion gate</h3>
+              <p>From <code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code> §10 — Phase 1 is done when: full-viewport canvas at 60fps; frame-rate-independent camera lerp; scroll/keyboard/click nav; nav dots with click-to-jump; all three rooms with their specified effects; bloom + chromatic + vignette; all GLSL in separate files; Zustand stores; resize handling; no console/WebGL errors; Docker + launchers work; CI green; tests cover store/hook/utility logic; docs current.</p>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 17. GLOSSARY ===================== -->
+        <section class="doc-section" id="glossary">
+          <details>
+            <summary><span class="sec-num">17</span><h2>Domain glossary</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">Terms a newcomer needs to navigate the codebase and the design spec.</p>
+              <dl class="doc-dl">
+                <dt>Room / scene</dt><dd>A distinct 3D environment with its own geometry, shaders, and interactivity, placed at a fixed Y offset. The camera lerps between rooms.</dd>
+                <dt>R3F (React Three Fiber)</dt><dd>A React renderer for Three.js. Lets you express a 3D scene as JSX components; <code>useFrame</code> runs per-frame, <code>useThree</code> accesses renderer/camera/scene.</dd>
+                <dt>ShaderMaterial</dt><dd>A Three.js material driven by hand-written GLSL vertex + fragment shaders. The only material type allowed here.</dd>
+                <dt>Uniform</dt><dd>A value passed from JS into a shader, constant across a draw call (e.g. <code>uTime</code>, <code>uMouse</code>). The JS→GPU bridge, updated each frame.</dd>
+                <dt>Exponential lerp</dt><dd>Frame-rate-independent damping: <code>1 - pow(decay, dt)</code>. Produces identical motion regardless of frame rate.</dd>
+                <dt>Simplex noise</dt><dd>A gradient noise function (<code>snoise</code>) for organic, cloud-like randomness — drives particle displacement, terrain, surface distortion.</dd>
+                <dt>Fresnel</dt><dd>Edge glow based on view angle: <code>pow(1 - abs(dot(view, normal)), e)</code>. Produces rim lighting and the crystal/glass look.</dd>
+                <dt>Additive blending</dt><dd>A blend mode where colors add instead of replacing. Dark→transparent, bright→glow. Paired with <code>depthWrite: false</code>.</dd>
+                <dt>Post-processing</dt><dd>Rendering the scene to a texture, then running shader passes (bloom, chromatic aberration, vignette) before display. Done via <code>EffectComposer</code>.</dd>
+                <dt>Bloom</dt><dd>A glow effect that bleeds bright pixels into neighbors. Tuned by strength / radius / threshold.</dd>
+                <dt>Chromatic aberration</dt><dd>Offsetting the R and B channels to simulate lens color fringing.</dd>
+                <dt>InstancedBufferGeometry</dt><dd>One geometry drawn many times in a single draw call, with per-instance attributes. Used for the crystal field.</dd>
+                <dt>ROOM_SPACING</dt><dd>The world-space Y gap between rooms (30 units).</dd>
+                <dt>Active Theory</dt><dd>The creative studio whose immersive-WebGL aesthetic this framework targets.</dd>
+              </dl>
+            </div>
+          </details>
+        </section>
+
+        <!-- ===================== 18. KEY FILES INDEX ===================== -->
+        <section class="doc-section" id="file-index">
+          <details>
+            <summary><span class="sec-num">18</span><h2>Key files index</h2><span class="chevron"></span></summary>
+            <div class="sec-body">
+              <p class="lead-in">A single jump-off map of the most important files that exist today.</p>
+              <div class="table-wrap"><table class="doc-table">
+                <thead><tr><th>File</th><th>What it's for</th></tr></thead>
+                <tbody>
+                  <tr><td><code class="fileref" data-path="src/App.tsx">src/App.tsx</code></td><td>Root component — the two-layer Canvas + DOM-overlay scaffold. The integration point.</td></tr>
+                  <tr><td><code class="fileref" data-path="src/main.tsx">src/main.tsx</code></td><td>Entry point — mounts App in StrictMode.</td></tr>
+                  <tr><td><code class="fileref" data-path="src/types/ShaderUniforms.ts">src/types/ShaderUniforms.ts</code></td><td>The typed uniform contract (Base + per-room).</td></tr>
+                  <tr><td><code class="fileref" data-path="src/types/RoomConfig.ts">src/types/RoomConfig.ts</code></td><td>Room props + room-registry shape.</td></tr>
+                  <tr><td><code class="fileref" data-path="src/types/glsl.d.ts">src/types/glsl.d.ts</code></td><td>GLSL import type declarations.</td></tr>
+                  <tr><td><code class="fileref" data-path="CLAUDE.md">CLAUDE.md</code></td><td>Architecture rules, phase scope, performance, disposal, completion gate.</td></tr>
+                  <tr><td><code class="fileref" data-path="webgl-immersive-integration-prompt.md">webgl-immersive-integration-prompt.md</code></td><td>The 832-line design spec — shader code, camera math, post-FX, reference rooms, snoise.</td></tr>
+                  <tr><td><code class="fileref" data-path="docs/WEBGL_FRONTEND_MASTER_PLAN.md">docs/WEBGL_FRONTEND_MASTER_PLAN.md</code></td><td>Authoritative master plan: vision, architecture diagrams, phase tasks, contracts, risks.</td></tr>
+                  <tr><td><code class="fileref" data-path="docs/status.md">docs/status.md</code></td><td>Live project state — what's built, what's next.</td></tr>
+                  <tr><td><code class="fileref" data-path="docs/versions.md">docs/versions.md</code></td><td>Semver changelog (currently one entry behind package.json).</td></tr>
+                  <tr><td><code class="fileref" data-path="package.json">package.json</code></td><td>Deps + scripts + the source-of-truth version (0.2.0).</td></tr>
+                  <tr><td><code class="fileref" data-path="vite.config.ts">vite.config.ts</code></td><td>Vite/GLSL/test config, dev port 5240.</td></tr>
+                  <tr><td><code class="fileref" data-path="tsconfig.json">tsconfig.json</code></td><td>TypeScript strict config.</td></tr>
+                  <tr><td><code class="fileref" data-path="eslint.config.js">eslint.config.js</code></td><td>Flat ESLint config (no-any, no-var, hooks rules).</td></tr>
+                  <tr><td><code class="fileref" data-path="Dockerfile">Dockerfile</code></td><td>Multi-stage node-build + nginx-serve image.</td></tr>
+                  <tr><td><code class="fileref" data-path="docker-compose.yml">docker-compose.yml</code></td><td>Single service on <code>${FRONTEND_PORT:-5240}</code>.</td></tr>
+                  <tr><td><code class="fileref" data-path="nginx.conf">nginx.conf</code></td><td>SPA fallthrough + asset caching/gzip.</td></tr>
+                  <tr><td><code class="fileref" data-path="run_webgl_frontend.sh">run_webgl_frontend.sh</code></td><td>Launcher with the [k]/[q]/[v]/[r] loop (sh).</td></tr>
+                  <tr><td><code class="fileref" data-path=".github/workflows/ci.yml">.github/workflows/ci.yml</code></td><td>CI: lint → test → build → docker-build.</td></tr>
+                  <tr><td><code class="fileref" data-path=".github/workflows/release.yml">.github/workflows/release.yml</code></td><td>Manual semver bump + tag + push.</td></tr>
+                  <tr><td><code class="fileref" data-path=".agents/skills/frontend-protocol/SKILL.md">.agents/skills/frontend-protocol/SKILL.md</code></td><td>The Three.js/shader discipline rules.</td></tr>
+                  <tr><td><code class="fileref" data-path="scripts/hooks/post-tool-use.cjs">scripts/hooks/post-tool-use.cjs</code></td><td>Path-aware invariant reminders on edit.</td></tr>
+                </tbody>
+              </table></div>
+            </div>
+          </details>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <button id="backTop" title="Back to top"><span class="ico"></span></button>
+
+  <footer class="doc-footer">
+    <p>Human-facing documentation for <strong>webgl-frontend</strong> · generated 2026-06-07.
+    Styling and behavior come from the shared <code>../.doc-assets/</code> folder — keep that folder alongside the project for the page to render fully. Re-open after editing source to keep this guide in sync.</p>
+  </footer>
+
+  <script src="../.doc-assets/doc.js" defer></script>
+</body>
+</html>
