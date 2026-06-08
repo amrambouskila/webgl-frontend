@@ -1,5 +1,11 @@
 # Version History
 
+## v0.2.1 — CI toolchain pin (pnpm)
+
+- Pinned the package manager via `packageManager: "pnpm@10.34.1"` in package.json — corepack resolves an exact, Node-20-compatible pnpm; nothing floats.
+- ci.yml, release.yml, Dockerfile: replaced `corepack prepare pnpm@latest --activate` with `corepack enable` (the version now comes from the packageManager field).
+- Root cause: `pnpm@latest` floated to 11.5.2, which requires Node ≥22.13 (it imports `node:sqlite`) while CI and Docker pin Node 20 — pnpm crashed on load before install ran, failing every job. Patch bump: build/CI config only, no application behavior change.
+
 ## v0.1.1 — CI test stage unblock
 
 - vite.config.ts: added `test.passWithNoTests: true` so the CI `test` stage exits 0 during scaffold phase (no test files yet). Flag is a no-op once test files land. Patch bump — config-only fix to unbreak the pipeline.

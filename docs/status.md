@@ -7,7 +7,7 @@
 - Project scaffolded with full directory structure, configuration files, and documentation
 - CLAUDE.md, README.md, master plan with Mermaid diagrams
 - Docker infrastructure (Dockerfile, docker-compose.yml, nginx.conf, launcher scripts)
-- GitLab CI pipeline (.gitlab-ci.yml)
+- GitHub Actions CI pipeline (.github/workflows/ci.yml + release.yml)
 - package.json with all Phase 1 dependencies
 - Vite + TypeScript + ESLint configuration
 - Vitest test setup
@@ -41,3 +41,4 @@
 - @react-three/postprocessing for post-processing (R3F-native EffectComposer)
 - ROOM_SPACING = 30 units along Y axis between rooms
 - Camera lerp decay factor = 0.04 (frame-rate independent exponential damping)
+- Package manager pinned via `packageManager: pnpm@10.34.1`; CI/release/Dockerfile use `corepack enable` and inherit it (no more floating `pnpm@latest`, which had reached 11.5.2 and broke on the pinned Node 20)

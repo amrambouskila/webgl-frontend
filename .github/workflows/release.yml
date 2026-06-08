@@ -34,9 +34,7 @@ jobs:
           node-version: "20"
 
       - name: Enable pnpm
-        run: |
-          corepack enable
-          corepack prepare pnpm@latest --activate
+        run: corepack enable
 
       - name: Configure git author
         run: |
