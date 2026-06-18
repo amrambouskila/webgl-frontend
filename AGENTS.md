@@ -366,14 +366,14 @@ webgl-frontend/
 ### Docker
 
 - `Dockerfile` — Multi-stage: stage 1 (`node:20-alpine`) runs `pnpm install` + `pnpm build`; stage 2 (`nginx:alpine`) copies `dist/` and serves via `nginx.conf`.
-- `docker-compose.yml` — Single service (`webgl-frontend`), exposes port via `${FRONTEND_PORT:-5173}`.
+- `docker-compose.yml` — Single service (`webgl-frontend`), exposes port via `${FRONTEND_PORT:-5240}`.
 - `nginx.conf` — SPA routing: all routes fall through to `index.html`.
 - No backend, no database, no healthcheck needed in Phase 1.
 
 ### Environment
 
 ```
-FRONTEND_PORT=5173
+FRONTEND_PORT=5240
 ```
 
 </containerization>
