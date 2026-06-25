@@ -1,5 +1,16 @@
 # Version History
 
+## v0.2.2 — CI test stage repair (Vitest 4 align + report robustness)
+
+Four distinct bugs were causing the CI `test` stage to fail (and would have caused silent false-greens once tests landed):
+
+- **`vite-plugin-glsl@1.6.0` × Vitest 2.1 incompatibility (root cause).** Under Vite 6.4 the plugin relies on Vite's declarative `transform.filter` hook-filter and drops its JS-level `createFilter` guard for Vite ≥6.3. Vitest 2.1.9's transform pipeline does not honor that declarative filter, so the shader transform ran on **every** file — rewriting each `.ts` test into `export default \`<source>\``, so Vitest collected **0 tests** (masked as a pass by `passWithNoTests: true`). Fix: bumped `vitest` + `@vitest/coverage-v8` `^2.1.0 → ^4.1.9` to align the runner with Vite 6 (Node-20 compatible per the v0.2.1 pin; vite `^6` in peer range). Verified: tests now collect with glsl active, and shader files import correctly as string defaults inside tests.
+- **`pnpm test -- …` forwarded the literal `--`.** CI ran `vitest run -- --coverage --reporter=junit …`; the `--` turned every flag into a positional file-filter, so the junit reporter never activated and no report was written. Fix: added a dedicated `test:ci` script (`vitest run --coverage --reporter=default --reporter=junit --outputFile.junit=junit-test.xml`) and CI now calls `pnpm test:ci` — no arg-forwarding ambiguity.
+- **`dorny/test-reporter@v1` default `fail-on-empty: true`** failed the job during the scaffold phase (zero committed test files → a valid but `tests="0"` report). Fix: set `fail-on-empty: false` so the empty scaffold-phase report surfaces as "0 tests" without failing; real failures still fail the job via Vitest's non-zero exit and dorny's `fail-on-error` (default true).
+- **Node 20 deprecation** on the `dorny/test-reporter@v1` action runtime. Fix: bumped to `dorny/test-reporter@v3` (Node 24 runtime).
+
+Also switched `vite.config.ts` to import `defineConfig` from `vitest/config` (type-safe with the `test` block) and renamed the report to `vitest tests`. Patch bump — CI/build toolchain only, no application runtime behavior change. (Remaining Node-20 deprecation warnings on `actions/checkout@v4` / `actions/setup-node@v4` / `actions/upload-artifact@v4` are non-failing and left as an optional follow-up.)
+
 ## v0.2.1 — CI toolchain pin (pnpm)
 
 - Pinned the package manager via `packageManager: "pnpm@10.34.1"` in package.json — corepack resolves an exact, Node-20-compatible pnpm; nothing floats.

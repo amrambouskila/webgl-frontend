@@ -37,14 +37,15 @@ jobs:
           node-version: "20"
       - run: corepack enable
       - run: pnpm install --frozen-lockfile
-      - run: pnpm test -- --coverage --reporter=default --reporter=junit --outputFile.junit=junit-test.xml
+      - run: pnpm test:ci
       - name: Publish test report
-        uses: dorny/test-reporter@v1
+        uses: dorny/test-reporter@v3
         if: ${{ !cancelled() }}
         with:
-          name: test tests
+          name: vitest tests
           path: junit-test.xml
           reporter: java-junit
+          fail-on-empty: false
 
   build:
     runs-on: ubuntu-latest
