@@ -243,6 +243,13 @@ gantt
     - `navigationStore` — currentScene, targetScene, transitioning, goToScene
     - `inputStore` — mouse, mouseTarget, scrollProgress, time
 
+11. **CI + SAST Wiring**
+    - Wire `sast` stage (Semgrep + `pnpm audit --audit-level=high` + gitleaks; Trivy in `docker-build`) between `lint` and `test` in `.github/workflows/ci.yml`
+    - CodeQL (`javascript-typescript`) + Semgrep SARIF upload to Security → Code scanning
+    - `eslint-plugin-security` + `eslint-plugin-no-unsanitized` added to `eslint.config.js`
+    - `pnpm sast` script for local parity
+    - Security headers (CSP, `nosniff`, `X-Frame-Options`, `Referrer-Policy`) in `nginx.conf`
+
 ### Acceptance Criteria
 
 - Canvas renders 60fps on desktop with all 3 rooms
@@ -252,6 +259,8 @@ gantt
 - Navigation works via scroll, keyboard, and dot clicks
 - No WebGL errors or console warnings
 - All GLSL in separate files
+- SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`
 
 ---
 
@@ -274,6 +283,8 @@ gantt
 - DOM overlays sync with room transitions
 - Loading screen hides initial compilation
 - Accessible: all text in DOM (screen-reader reachable)
+- SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`
 
 ---
 
@@ -298,6 +309,8 @@ gantt
 - `prefers-reduced-motion` fully respected
 - Bundle < 300KB gzipped (excluding three.js)
 - LCP < 2s
+- SAST stage green — zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- New input boundaries in this phase are injection-safe and documented in `CLAUDE.md` `<security>`
 
 ---
 
@@ -336,6 +349,35 @@ And internally:
 ### State Contract
 
 Zustand stores are the single source of truth for cross-layer communication. Components subscribe to specific slices — never the whole store.
+
+### Security
+
+**SAST is a mandatory pipeline stage in every phase**, from the first pipeline onward. `sast` sits between `lint` and `test` in `.github/workflows/ci.yml` and fails on any HIGH/CRITICAL finding; MEDIUM findings are triaged with a written justification. Tool set for this TypeScript-only static frontend:
+
+| Tool | Stage |
+|------|-------|
+| Semgrep (`p/default`, `p/owasp-top-ten`, `p/typescript`, `p/react`, `p/docker`) + CodeQL `javascript-typescript`, SARIF uploaded to Code scanning | `sast` |
+| `pnpm audit --audit-level=high` | `sast` |
+| `gitleaks detect --no-git --redact` | `sast` |
+| `eslint-plugin-security` + `eslint-plugin-no-unsanitized` | `lint` |
+| Trivy on the built `nginx:alpine` image (`--severity HIGH,CRITICAL --exit-code 1`) | `docker-build` |
+
+```mermaid
+graph LR
+    L[lint] --> S[sast] --> T[test] --> B[build] --> D[docker-build + Trivy]
+```
+
+**Injection-safety principles for this project.** There is no server, database, outbound HTTP, or LLM call, so the attack surface is the browser and the deploy artifact. Untrusted-input boundaries, each with a named injection class and defense (full inventory in `CLAUDE.md` `<security>`):
+
+- Browser input events (wheel, keyboard, pointer, touch, Phase 3 gyroscope) — scene index clamped in `goToScene`, mouse normalized before reaching uniforms, wheel cooldown against event floods.
+- DOM overlay content (navigation dots, Phase 2 labels/HUD/panels) — React escaping only, `dangerouslySetInnerHTML` banned, DOMPurify for any external rich content.
+- Shader source — bundled from `src/shaders/` at build time; never assembled from runtime input.
+- Runtime assets (Phase 3 Draco/KTX2) — same-origin `public/` paths from a typed allowlist; never a URL derived from `window.location`.
+- nginx — CSP (`default-src 'self'`), `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy` shipped in `nginx.conf`.
+- GPU resources — particle/instance counts are code constants (device-tier scaled in Phase 3), never input-controlled.
+- Supply chain — frozen lockfile installs, `pnpm audit`, Trivy.
+
+Any phase that adds a boundary (deep-linking via URL, fetched content, worker-based decoders) documents its injection classes in `CLAUDE.md` `<security>` before the gate closes.
 
 ---
 

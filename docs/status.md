@@ -21,6 +21,19 @@
 - **Navigation:** Not yet implemented
 - **Tests:** Setup only, no test files yet (vitest configured with `passWithNoTests: true` until first tests land). The test pipeline is now verified end-to-end (Vitest 4 + glsl active): test files collect, shader imports resolve to string defaults in tests, and a JUnit report is produced and surfaced via `dorny/test-reporter@v3`.
 
+## Security
+
+**Wired.** The requirements in `CLAUDE.md`/`AGENTS.md` `<security>` (section 7a) and the master plan Security section are now enforced:
+
+- `.github/workflows/ci.yml` has a `sast` job (`needs: lint`) running CodeQL `javascript-typescript`, `semgrep scan` with SARIF upload to Security → Code scanning, `gitleaks/gitleaks-action`, and `pnpm audit --audit-level=high`. `test` carries `needs: sast`, so a security finding blocks test → build → docker-build.
+- `docker-build` builds with `load: true` as `webgl-frontend:ci` and runs `aquasecurity/trivy-action` (`severity: HIGH,CRITICAL`, `exit-code: 1`, `ignore-unfixed: true`).
+- `eslint.config.js` extends `security.configs.recommended` + `noUnsanitized.configs.recommended` — `pnpm lint` passes (0 errors, 2 `detect-non-literal-fs-filename` warnings on the build-time config reader).
+- `nginx.conf` sends `Content-Security-Policy` (`script-src 'self'`; `worker-src 'self' blob:` and `img-src … blob:` for the WebGL/worker paths; `style-src 'unsafe-inline'` only because R3F/drei set inline style attributes), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`.
+- `package.json` has a `sast` script (`semgrep scan` + `gitleaks detect` + `pnpm audit`) for local parity.
+- `Dockerfile` enforces `pnpm install --frozen-lockfile` (no fallback install).
+
+Still pending: `.semgrep/` project rules directory (create it with the first repo-specific rule).
+
 ## What's Next
 
 1. Zustand stores (navigationStore, inputStore)

@@ -19,6 +19,9 @@ Run `pnpm lint` (or check if it would pass). Report errors.
 ### 2. Type Check
 Run `pnpm tsc --noEmit`. Report type errors.
 
+### 2a. SAST Check
+Run the local SAST set from `AGENTS.md` `<security>` (section 7a): Semgrep (`semgrep scan --config auto --error`), `pnpm audit --audit-level=high`, `gitleaks detect --no-git --redact`. Report every HIGH/CRITICAL finding as blocking; MEDIUM findings must have a written triage justification. For every input boundary touched by the diff, confirm its injection class(es) and defense are documented in section 7a.
+
 ### 3. Test Check
 Run `pnpm test`. Report failures and coverage.
 
@@ -56,6 +59,7 @@ Produce a verdict table:
 |-------|--------|-------|
 | Lint | PASS/FAIL | ... |
 | Types | PASS/FAIL | ... |
+| SAST | PASS/FAIL | HIGH/CRITICAL count; MEDIUM triage status; new input boundaries documented |
 | Tests | PASS/FAIL | ... |
 | Code Review | PASS/FAIL | ... |
 | Shaders | PASS/FAIL | ... |

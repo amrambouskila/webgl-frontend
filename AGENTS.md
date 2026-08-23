@@ -328,7 +328,7 @@ webgl-frontend/
 ├── tsconfig.json
 ├── vite.config.ts
 ├── .gitignore
-├── .gitlab-ci.yml
+├── .github/workflows/              # ci.yml (lint → sast → test → build → docker-build), release.yml (manual version bump)
 ├── Dockerfile                         # Multi-stage: node build + nginx serve
 ├── docker-compose.yml
 ├── nginx.conf                         # Nginx config for SPA routing
@@ -382,17 +382,79 @@ FRONTEND_PORT=5240
 
 <ci_cd>
 
-## 7. CI/CD — GitLab
+## 7. CI/CD — GitHub Actions
 
-`.gitlab-ci.yml` pipeline stages:
+`.github/workflows/ci.yml` pipeline stages (sequential `needs:` chain; `release.yml` is the manual version-bump workflow):
 1. **lint** — `pnpm lint`. Fail on errors.
-2. **test** — `pnpm test -- --coverage`. Fail on test failure or coverage below threshold.
-3. **build** — `pnpm build`. Must compile without errors.
-4. **docker-build** — `docker build` to verify Dockerfile.
+2. **sast** — Semgrep + `pnpm audit --audit-level=high` + gitleaks. Fail on any HIGH/CRITICAL finding (section 7a).
+3. **test** — `pnpm test -- --coverage`. Fail on test failure or coverage below threshold.
+4. **build** — `pnpm build`. Must compile without errors.
+5. **docker-build** — `docker build` to verify Dockerfile, then Trivy scan of the image (fail on HIGH/CRITICAL).
 
-All MRs must pass CI before merging. Conventional commits for semver bumps.
+All PRs must pass CI before merging. Conventional commits for semver bumps.
 
 </ci_cd>
+
+---
+
+<security>
+
+## 7a. Security — SAST Scanning & Injection Safety (Non-Negotiable)
+
+Implements global CLAUDE.md section 19 for this project. Security is part of the Definition of Done for every task (section 10) and part of the CI pipeline from the first pipeline commit.
+
+### SAST scanning — required stage
+
+The pipeline MUST have a `sast` stage between `lint` and `test` that fails on any HIGH/CRITICAL finding. MEDIUM findings are surfaced in the CI UI and triaged (fixed, or suppressed inline with a written justification). `allow_failure`/`continue-on-error` on the stage is non-compliant. **Wired:** `.github/workflows/ci.yml` carries the `sast` job (`needs: lint`) and `test` carries `needs: sast`.
+
+This project is a TypeScript-only static frontend (no Python, no backend), so the tool set is:
+
+| Tool | Where | What it catches |
+|------|-------|-----------------|
+| **Semgrep** — wired: `pipx run semgrep scan --config auto --config p/owasp-top-ten --config p/typescript --config p/react --config p/docker --severity ERROR --error` | `sast` job | Primary SAST engine over the whole checkout (`src/`, `tests/`, `Dockerfile`, `nginx.conf`). A `.semgrep/` project-rules directory does not exist yet — create it with the first repo-specific rule. |
+| **`eslint-plugin-security`** + **`eslint-plugin-no-unsanitized`** — wired in `eslint.config.js` (`security.configs.recommended`, `noUnsanitized.configs.recommended`) | `lint` stage | `eval`, `new Function`, unsafe regex, raw `innerHTML`/`outerHTML`/`insertAdjacentHTML` writes. `pnpm lint` passes with 0 errors (2 `detect-non-literal-fs-filename` warnings on the build-time config reader). The `dangerouslySetInnerHTML` ban is enforced by review — `no-unsanitized` covers the DOM sinks, not the React prop |
+| **`pnpm audit --audit-level=high`** — wired | `sast` job | Known-vulnerable dependencies (three, R3F, drei, postprocessing, gsap, lenis, zustand and their transitive tree) |
+| **gitleaks** — wired: `gitleaks/gitleaks-action@v2` in CI, `gitleaks detect --no-git --redact` locally | `sast` job | Leaked credentials anywhere in the tree |
+| **Trivy** — wired: `aquasecurity/trivy-action@0.28.0` (`severity: HIGH,CRITICAL`, `exit-code: 1`, `ignore-unfixed: true`) against `webgl-frontend:ci` | `docker-build` job | OS/package CVEs in the `nginx:alpine` runtime image; the build step uses `load: true` so the image is scannable |
+
+**Provider wiring (wired).** The live pipeline is GitHub Actions (`.github/workflows/ci.yml`; jobs `lint → sast → test → build → docker-build`). The `sast` job has `needs: lint` and `test` has `needs: sast`. It runs `github/codeql-action` (init → analyze, language `javascript-typescript`) **plus** `pipx run semgrep scan` uploading SARIF via `github/codeql-action/upload-sarif` (a separate step fails the job when Semgrep reported findings), `gitleaks/gitleaks-action@v2`, and `pnpm audit --audit-level=high`. `aquasecurity/trivy-action` runs in `docker-build`. The job declares `permissions: { contents: read, security-events: write, actions: read }`. Findings render under Security → Code scanning.
+
+**Local parity.** `package.json` has a `sast` script (`pnpm sast`) chaining the three commands below. Semgrep and gitleaks are not project dependencies — install them on the host (`pipx install semgrep`, `winget install gitleaks`) before running:
+
+```bash
+semgrep scan --config auto --error
+pnpm audit --audit-level=high
+gitleaks detect --no-git --redact
+```
+
+`/pre-commit` runs the same set and reports findings in its verdict table.
+
+### Injection safety — input boundary inventory
+
+This project has no server-side code, no database, no outbound HTTP, and no LLM calls — SQL, command, SSRF, template, header/log, and prompt injection do not apply. Every boundary below is client-side or build/deploy-time.
+
+| Boundary | Where | Injection class(es) | Required defense |
+|----------|-------|---------------------|------------------|
+| Browser input events — `wheel`, `keydown`, pointer/click, touch (Phase 3: `DeviceOrientationEvent`) | `useScrollNavigation`, `useMouseTracking`, `NavigationDots` → `navigationStore`, `inputStore` | Resource exhaustion (event floods), out-of-range state | Scene index clamped to `[0, sceneCount - 1]` inside `goToScene` — the store is the only writer; wheel cooldown in `useScrollNavigation`; mouse normalized to `[-1, 1]` before it reaches a uniform; no event payload is ever stored raw. |
+| DOM overlay content — navigation dots (Phase 1), scene labels / HUD / content panels (Phase 2) | `src/components/ui/` | XSS | React default escaping only. `dangerouslySetInnerHTML` banned by ESLint. Room metadata (`RoomDefinition.name`, Phase 2 title/subtitle/body) is typed static data from the repo, never fetched; if Markdown or any rich content from outside the app is ever rendered, sanitize with DOMPurify first. |
+| Shader source (`.vert`/`.frag`/`.glsl`) | `src/shaders/`, imported via `vite-plugin-glsl` | None at runtime (build-time inlining of repo files) | GLSL is bundled at build time from repo files only. No shader source is ever assembled from runtime input or loaded from a URL. Uniform values entering shaders are numbers/vectors from the stores, already clamped. |
+| Runtime assets (Phase 3: Draco-compressed meshes, KTX2 textures; any `public/` files) | Three.js/drei loaders | Unsafe deserialization, resource exhaustion | Loaders read only same-origin paths under `public/` chosen from a typed allowlist in code — never a URL derived from `window.location`, query string, or user input. Decoder workers (Draco/KTX2) are served from the same origin, not a CDN. |
+| `window.location` (hash / query string) | Not read anywhere today | Open redirect, reflected XSS, out-of-range scene index | Stays unread until deep-linking is an explicit task. When added: parse with a typed guard, clamp to a valid scene index, never reflect the raw value into the DOM or a URL. |
+| nginx static serving | `nginx.conf`, `Dockerfile` | XSS (missing CSP), clickjacking, MIME sniffing | `nginx.conf` ships `Content-Security-Policy` (`default-src 'self'`; no `unsafe-inline` scripts; `worker-src 'self' blob:` only when Phase 3 decoder workers require it, with a written justification), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`. SPA fallthrough to `index.html` stays as-is. |
+| Environment variables | `FRONTEND_PORT` in `docker-compose.yml` and the launchers | Secrets / misconfiguration | Host-side port only; no `import.meta.env` values are consumed in `src/` today. Any future `VITE_*` variable is public by construction — never put a secret in one. |
+| Dependency supply chain | `package.json`, `pnpm-lock.yaml`, `Dockerfile` | Malicious/vulnerable packages | `pnpm install --frozen-lockfile` in CI; `pnpm audit --audit-level=high` in `sast`; Trivy on the runtime image. New dependencies are justified before being added. |
+
+### Project-specific additions
+
+- **WebGL is a GPU-resource boundary.** Particle counts, instance counts, and geometry subdivisions are constants in code (Phase 3 scales them by device tier), never derived from input — a runtime-controlled count is a denial-of-service on the GPU.
+- **Shader compilation is trusted-code-only.** `ShaderMaterial` sources come exclusively from `src/shaders/` files. No `#include` of runtime strings, no user-editable shader playground in any phase.
+- **Sourcemaps are published** (`build.sourcemap: true` in `vite.config.ts`). Acceptable for a no-secrets static site; reconsider before any phase introduces configuration that should not be readable.
+
+### Self-audit hook
+
+The completion checklist in section 13 includes a **Security check** item: local SAST clean; every touched input boundary names its injection class(es) and defense; this section updated if a boundary was added.
+
+</security>
 
 ---
 
@@ -452,7 +514,9 @@ Phase 1 is done when:
 - [ ] Resize handling updates renderer, camera, and resolution uniforms
 - [ ] No console errors or WebGL warnings
 - [ ] Dockerfile builds, docker-compose starts, launcher scripts work
-- [ ] GitLab CI pipeline passes (lint, test, build, docker)
+- [ ] GitHub Actions CI pipeline (`.github/workflows/ci.yml`) passes (lint, sast, test, build, docker-build)
+- [ ] SAST green with zero HIGH/CRITICAL findings; MEDIUM findings triaged with written justification
+- [ ] All input boundaries injection-safe and documented in `<security>` (section 7a)
 - [ ] Tests cover store logic, hook logic, and utility functions
 - [ ] `docs/status.md` and `docs/versions.md` current
 
@@ -512,7 +576,8 @@ When completing a task:
 8. **Docs Check** — `status.md` and `versions.md` updated.
 9. **Test Check** — Store/hook/utility logic has tests.
 10. **Forward-Compatibility Check** — Room architecture supports Phase 2 content integration.
-11. **Git State** — Report changed files, suggest commit message (do not commit).
+11. **Security Check** — Local SAST clean (Semgrep + `pnpm audit` + gitleaks); every touched input boundary names its injection class(es) and defense; `<security>` section updated if a boundary was added.
+12. **Git State** — Report changed files, suggest commit message (do not commit).
 
 </self_audit>
 
