@@ -2,6 +2,17 @@
 
 ## v0.2.2 — CI test stage repair (Vitest 4 align + report robustness)
 
+### CI hardening + dependency remediation (2026-08-24)
+
+- **Semgrep invocation corrected.** The job used `semgrep ci` with `--severity` and `--error`, which that subcommand does not accept — it exits 2 with a usage error before scanning. Switched to `semgrep scan`, which supports both.
+- **Release workflow hardened against script injection.** `${{ inputs.bump }}` and `${{ steps.bump.outputs.new_version }}` were interpolated directly into `run:` blocks, where the value becomes shell code. Both now pass through `env:` and are read as quoted shell variables. The input is `type: choice`, so this was not exploitable today — it is the pattern that breaks the moment the input type changes.
+- **Security headers now actually delivered.** nginx inherits `add_header` from an enclosing level only when the current level declares none of its own, and the cache-control `location` blocks declared their own — silently dropping CSP, `nosniff`, `X-Frame-Options` and `Referrer-Policy` there. Because the SPA resolves through `try_files ... /index.html`, the document itself was served with **zero** security headers. Verified by serving the config in `nginx:alpine` and curling `/`: 0 headers before, 4 after. They are now repeated in each affected block, with a comment explaining why the duplication must stay.
+- **Dockerfile `missing-user` suppressed with written justification**, per global CLAUDE.md section 9 (non-root is not required for personal local-dev containers). The nginx images additionally cannot run as non-root without the unprivileged image and a port change. Revisit before any deployment beyond localhost.
+- **Dependency remediation via `pnpm-workspace.yaml`.** This project pins `pnpm@10.34.1`, and pnpm 10 writes `overrides` to `pnpm-workspace.yaml` rather than `package.json` — so the file is new here. 21 bounded overrides; audit clean and the build passes.
+
+**On the override bounding.** `pnpm audit --fix` emits one override per advisory with an open-ended target, which lets the resolver jump majors — `>=3.2.6` pulled vitest 4.1.11 and broke its `@vitest/coverage-v8` peer. Each target is therefore capped at its own compatibility line (next major, or next minor for 0.x where semver treats the minor as breaking). The advisory-derived keys are kept verbatim rather than merged: esbuild had two disjoint ranges (`<=0.24.2` and `0.27.3-0.28.0`), and collapsing them to the highest target forced 0.28.2, which cannot lower destructuring to the configured browser targets.
+
+
 Four distinct bugs were causing the CI `test` stage to fail (and would have caused silent false-greens once tests landed):
 
 - **`vite-plugin-glsl@1.6.0` × Vitest 2.1 incompatibility (root cause).** Under Vite 6.4 the plugin relies on Vite's declarative `transform.filter` hook-filter and drops its JS-level `createFilter` guard for Vite ≥6.3. Vitest 2.1.9's transform pipeline does not honor that declarative filter, so the shader transform ran on **every** file — rewriting each `.ts` test into `export default \`<source>\``, so Vitest collected **0 tests** (masked as a pass by `passWithNoTests: true`). Fix: bumped `vitest` + `@vitest/coverage-v8` `^2.1.0 → ^4.1.9` to align the runner with Vite 6 (Node-20 compatible per the v0.2.1 pin; vite `^6` in peer range). Verified: tests now collect with glsl active, and shader files import correctly as string defaults inside tests.
