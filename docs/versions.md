@@ -2,6 +2,53 @@
 
 ## v0.2.2 — CI test stage repair (Vitest 4 align + report robustness)
 
+### `docker-build` stage repair — two independent blockers (2026-08-28)
+
+The `docker-build` job had been red since 2026-08-23 while `lint`, `sast`, `test` and `build` all
+passed. It failed at **"Set up job"**, before a single step ran, which is why nothing downstream
+was ever observed: neither `docker build` nor the Trivy scan had executed since the last green run
+on 2026-06-25. Fixing the setup error exposed a second blocker underneath it.
+
+- **`aquasecurity/trivy-action@0.28.0` no longer resolves** (`.github/workflows/ci.yml:119`).
+  Run 33009843571 log: `##[error]Unable to resolve action aquasecurity/trivy-action@0.28.0, unable
+  to find version 0.28.0`. **Root cause:** as part of the upstream response to the
+  trivy-action supply-chain incident, the project migrated every tag to a `v` prefix and deleted
+  the unprefixed ones -- `0.35.0` is the sole unprefixed tag left alive, deliberately kept to avoid
+  breaking pinned workflows. `0.28.0` was not spared. GitHub resolves all of a job's actions during
+  setup, so an unresolvable pin kills the job before checkout.
+  **Fix:** pinned to `@v0.36.0`. All four inputs the workflow passes were diffed against `action.yaml`
+  at both refs and are unchanged: `image-ref` (still honored by `entrypoint.sh` via `INPUT_IMAGE_REF`),
+  `severity`, `exit-code`, `ignore-unfixed`. `cache` defaults to `true` at both refs, so caching
+  behaviour did not change either.
+
+- **`pnpm install --frozen-lockfile` fails inside the image** (`Dockerfile:8`) with
+  `ERR_PNPM_LOCKFILE_CONFIG_MISMATCH  Cannot proceed with the frozen installation. The current
+  "overrides" configuration doesn't match the value found in the lockfile`. **Root cause:** pnpm 10
+  reads `overrides` from `pnpm-workspace.yaml`, not `package.json`, and `pnpm-lock.yaml` records the
+  resolved set at its top. The build stage copied only `package.json` + `pnpm-lock.yaml`, so pnpm saw
+  21 overrides in the lockfile and none in config, and `--frozen-lockfile` correctly refused. This
+  landed with the 2026-08-24 dependency remediation that introduced `pnpm-workspace.yaml`, and stayed
+  invisible because the trivy pin killed the job first.
+  **Fix:** `COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./`. The `pnpm-lock.yaml*` glob was
+  dropped at the same time -- all three files are tracked, and the glob would have silently degraded a
+  missing lockfile into an unpinned install instead of failing loudly.
+
+**Verified locally, not merely reasoned about:**
+
+| Check | Result |
+|-------|--------|
+| `docker build -t webgl-frontend:ci-localtest .` | exit 0 (`tsc -b` + `vite build` clean, image exported) |
+| `trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1` on that image | **0 vulnerabilities**, exit 0 (alpine 3.24.1, 71 packages) |
+| `aquasecurity/trivy-action` tag `v0.36.0` | resolves; `0.28.0` returns HTTP 404 |
+
+The Trivy result also retires an open question from the 2026-08-26 entry: the `apk upgrade --no-cache`
+layer is now measured on the actual built image, not just the base, and it holds the gate at zero
+HIGH/CRITICAL.
+
+**Semver reasoning:** Patch. CI/build-infrastructure repair. No application code, dependency, host
+port, API or data contract, and no test changed.
+
+
 ### Base-image security patch for the alpine runtime stage (2026-08-26)
 
 - **`RUN apk upgrade --no-cache` added to `Dockerfile`.** The `nginx:alpine` base currently ships
@@ -14,9 +61,11 @@
   observation, not a property, which is precisely why the patch layer belongs in the Dockerfile
   rather than being skipped on the strength of a past scan. This is the alpine counterpart to the
   `apt-get upgrade` layer the Debian bases already carry.
-- **Not gated by CI here.** This repo's pipeline has no `trivy image` step, so the layer is
-  preventive hardening rather than a fix for a failing stage. The base-image measurement
-  above is what supports it; no image scan is claimed for this repo.
+- **Superseded 2026-08-28.** This bullet claimed the pipeline has no `trivy image` step. That was
+  wrong: `.github/workflows/ci.yml` has carried an `aquasecurity/trivy-action` step in `docker-build`
+  all along. What was true is that it had never *executed* -- the job died at "Set up job" on an
+  unresolvable action pin, so the scan was configured but never reached. The layer is therefore
+  load-bearing, not merely preventive: see the docker-build repair entry below.
 
 **Semver reasoning:** Patch. A build-time base-image security patch. No application code,
 dependency, host port, API or data contract, and no test changed.
@@ -53,7 +102,7 @@ Also switched `vite.config.ts` to import `defineConfig` from `vitest/config` (ty
 ### Security wiring (same unreleased patch)
 
 - **`sast` job added to `.github/workflows/ci.yml`** between `lint` and `test` (`needs: lint`): CodeQL (`javascript-typescript`, init → analyze), `semgrep scan` (`--config auto --config p/owasp-top-ten --config p/typescript --config p/react --config p/docker --severity ERROR --error`) with SARIF uploaded via `github/codeql-action/upload-sarif`, `gitleaks/gitleaks-action@v2`, and `pnpm audit --audit-level=high`. Job-level `permissions: security-events: write`. `test` now carries `needs: sast`, so a HIGH/CRITICAL finding blocks test → build → docker-build.
-- **Trivy in `docker-build`:** the image is built with `load: true` and tagged `webgl-frontend:ci`, then scanned by `aquasecurity/trivy-action@0.28.0` (`severity: HIGH,CRITICAL`, `exit-code: 1`, `ignore-unfixed: true`).
+- **Trivy in `docker-build`:** the image is built with `load: true` and tagged `webgl-frontend:ci`, then scanned by `aquasecurity/trivy-action@v0.36.0` (`severity: HIGH,CRITICAL`, `exit-code: 1`, `ignore-unfixed: true`).
 - **`eslint.config.js`:** added `eslint-plugin-security` + `eslint-plugin-no-unsanitized` (recommended configs) so `eval`, `new Function`, raw `innerHTML`, and unsafe regex fail `lint`. `pnpm lint` passes with 0 errors (2 informational `detect-non-literal-fs-filename` warnings).
   > **Severity caveat (verified against the installed plugin):** every rule in `eslint-plugin-security`'s `recommended` config is `warn`, and this project's `lint` script is a bare `eslint .` with no `--max-warnings 0` — so those rules are *reported but cannot fail the build*. Only `eslint-plugin-no-unsanitized` (severity `error`, covering `innerHTML` / `outerHTML` / `insertAdjacentHTML` / `document.write`) actually gates today. Neither plugin covers `new Function` or the React `dangerouslySetInnerHTML` prop. To make the security rules gate, set them to `error` explicitly (and expect to triage `security/detect-object-injection`, which is noisy).
 - **`nginx.conf`:** added `Content-Security-Policy` (`default-src 'self'`; `script-src 'self'`; `worker-src 'self' blob:`; `img-src 'self' data: blob:`; `object-src 'none'`; `frame-ancestors 'none'`; `style-src 'self' 'unsafe-inline'` documented as required by R3F/drei inline style attributes), `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`.

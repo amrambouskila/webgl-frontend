@@ -23,14 +23,34 @@
 
 ## Security
 
+### Verified state (2026-08-28)
+
+- **`docker-build` is repaired and the image scan is real for the first time.** The job had been
+  failing at "Set up job" on an unresolvable `aquasecurity/trivy-action@0.28.0` pin, so neither the
+  image build nor the Trivy scan had ever executed. Both blockers are fixed (see `versions.md`), and
+  both outcomes are now measured rather than assumed:
+  - `docker build` completes clean (exit 0).
+  - `trivy image --severity HIGH,CRITICAL --ignore-unfixed --exit-code 1` on the built image reports
+    **0 vulnerabilities** (alpine 3.24.1, 71 packages), exit 0. This is the first per-image scan
+    result this repo can actually claim.
+- **Trivy pin moved to `@v0.36.0`.** Upstream deleted its unprefixed tags in response to the
+  trivy-action supply-chain incident; `0.35.0` is the only unprefixed tag still alive. All four
+  inputs in use (`image-ref`, `severity`, `exit-code`, `ignore-unfixed`) are unchanged between
+  `0.28.0` and `v0.36.0`, and `cache` still defaults to `true`, so the gate is preserved exactly.
+- **Known, accepted, not fixed here:** every action other than Trivy is pinned to a mutable major
+  tag (`@v4`, `@v3`, `@v2`), which is the same class of exposure the trivy-action incident
+  exercised. Hash-pinning the action set is a deliberate follow-up, not part of this repair.
+
 ### Verified state (2026-08-26)
 
 - **Alpine base-image CVEs patched at build time.** `CVE-2026-14456` (`libcrypto3`/`libssl3`
   3.5.7-r0, HIGH, fixed 3.5.8-r0) is cleared by an `apk upgrade` layer in the runtime stage --
   measured on the base image as 2 HIGH before, 0 after. The base scanned clean two days earlier,
   so the layer exists to stop a future advisory from becoming a pipeline failure.
-- **No image scan runs in this repo's CI**, so nothing here was gating; the change is
-  preventive and no per-image scan result is claimed.
+- **Corrected 2026-08-28.** An earlier revision of this section said no image scan runs in CI.
+  It does -- `docker-build` has always carried an `aquasecurity/trivy-action` step; it had simply
+  never executed, because the job failed at "Set up job" on an unresolvable action pin. With the
+  pin repaired the scan now runs, and the `apk upgrade` layer is what keeps it green.
 
 ### Verified state (2026-08-24)
 
